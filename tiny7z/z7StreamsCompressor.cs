@@ -23,15 +23,13 @@ namespace pdj.tiny7z
         /// Private variables
         /// </summary>
         Stream stream;
-        z7Header.StreamsInfo streamsInfo;
 
         /// <summary>
         /// Default constructor.
         /// </summary>
-        public z7StreamsCompressor(Stream stream, z7Header.StreamsInfo streamsInfo)
+        public z7StreamsCompressor(Stream stream)
         {
             this.stream = stream;
-            this.streamsInfo = streamsInfo;
             Codec = null;
         }
 
@@ -88,7 +86,7 @@ namespace pdj.tiny7z
                 {
                     (encoder as IWriteCoderProperties).WriteCoderProperties(propsStream);
 
-                    cs.Folder.CodersInfo[0].Attributes |= (Byte)0b00100000;
+                    cs.Folder.CodersInfo[0].Attributes |= (Byte)z7Header.CoderInfo.AttrHasAttributes;
                     cs.Folder.CodersInfo[0].Properties = propsStream.ToArray();
                     cs.Folder.CodersInfo[0].PropertiesSize = (UInt64)cs.Folder.CodersInfo[0].Properties.Length;
                 }

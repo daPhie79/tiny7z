@@ -56,35 +56,44 @@ namespace pdj.tiny7z
 
         public class Digests : IHeaderParser, IHeaderWriter
         {
-            public UInt64 NumStreams;
-            public bool[] Defined; // [NumStreams]
-            public UInt64 NumDefined;
-            public UInt32[] CRCs; // [NumDefined]
+            public UInt64 NumStreams()
+            {
+                return (UInt64)CRCs.LongLength;
+            }
+            public UInt64 NumDefined()
+            {
+                return (UInt64)CRCs.Count(crc => crc != null);
+            }
+            public bool Defined(UInt64 index)
+            {
+                return CRCs[index] != null;
+            }
+            public UInt32?[] CRCs;
             public Digests(UInt64 NumStreams)
             {
-                this.NumStreams = NumStreams;
-                this.Defined = new bool[NumStreams];
-                this.NumDefined = 0;
-                this.CRCs = new UInt32[0];
+                CRCs = new UInt32?[NumStreams];
             }
 
             public void Parse(Stream hs)
             {
-                NumDefined = hs.ReadOptionalBoolVector(NumStreams, out Defined);
+                bool[] defined;
+                var numDefined = hs.ReadOptionalBoolVector(NumStreams(), out defined);
 
-                CRCs = new UInt32[NumDefined];
                 using (BinaryReader reader = new BinaryReader(hs, Encoding.Default, true))
-                    for (ulong i = 0; i < NumDefined; ++i)
-                        CRCs[i] = reader.ReadUInt32();
+                    for (long i = 0; i < defined.LongLength; ++i)
+                        if (defined[i])
+                            CRCs[i] = reader.ReadUInt32();
             }
 
             public void Write(Stream hs)
             {
-                hs.WriteOptionalBoolVector(Defined);
+                bool[] defined = CRCs.Select(crc => (bool)(crc != null)).ToArray();
+                hs.WriteOptionalBoolVector(defined);
 
                 using (BinaryWriter writer = new BinaryWriter(hs, Encoding.Default, true))
-                    for (ulong i = 0; i < NumDefined; ++i)
-                        writer.Write((UInt32)CRCs[i]);
+                    for (ulong i = 0; i < NumStreams(); ++i)
+                        if (CRCs[i] != null)
+                            writer.Write((UInt32)CRCs[i]);
             }
         }
 
@@ -151,13 +160,13 @@ namespace pdj.tiny7z
             public UInt64 PackPos;
             public UInt64 NumPackStreams;
             public UInt64[] Sizes; // [NumPackStreams]
-            public UInt32?[] CRCs; // [NumPackStreams]
+            public Digests Digests; // [NumPackStreams]
             public PackInfo()
             {
                 this.PackPos = 0;
                 this.NumPackStreams = 0;
                 this.Sizes = new UInt64[0];
-                this.CRCs = new UInt32?[0];
+                this.Digests = new Digests(0);
             }
 
             public void Parse(Stream hs)
@@ -165,7 +174,7 @@ namespace pdj.tiny7z
                 PackPos = hs.ReadDecodedUInt64();
                 NumPackStreams = hs.ReadDecodedUInt64();
                 Sizes = new UInt64[NumPackStreams­];
-                CRCs = new UInt32?[NumPackStreams];
+                Digests = new Digests(NumPackStreams);
                 while (true)
                 {
                     PropertyID propertyID = GetPropertyID(this, hs);
@@ -176,13 +185,7 @@ namespace pdj.tiny7z
                                 Sizes[i] = hs.ReadDecodedUInt64();
                             break;
                         case PropertyID.kCRC:
-                            {
-                                Digests packStreamDigests = new Digests(NumPackStreams);
-                                packStreamDigests.Parse(hs);
-                                for (ulong i = 0, j = 0; i < packStreamDigests.NumStreams; ++i)
-                                    if (packStreamDigests.Defined[i])
-                                        CRCs[i] = packStreamDigests.CRCs[j++];
-                            }
+                            Digests.Parse(hs);
                             break;
                         case PropertyID.kEnd:
                             return;
@@ -201,22 +204,11 @@ namespace pdj.tiny7z
                 for (ulong i = 0; i < NumPackStreams; ++i)
                     hs.WriteEncodedUInt64(Sizes[i]);
 
-                for (ulong i = 0; i < NumPackStreams; ++i)
-                    if (CRCs[i] != null)
-                    {
-                        hs.WriteByte((Byte)PropertyID.kCRC);
-                        Digests packStreamDigests = new Digests(NumPackStreams);
-                        packStreamDigests.CRCs = new UInt32[NumPackStreams];
-                        for (ulong j = 0, k = 0; j < NumPackStreams; ++j)
-                            if (CRCs[j] != null)
-                            {
-                                packStreamDigests.Defined[j] = true;
-                                packStreamDigests.CRCs[k++] = (UInt32)CRCs[j];
-                                packStreamDigests.NumDefined++;
-                            }
-                        packStreamDigests.Write(hs);
-                        break;
-                    }
+                if (Digests.NumDefined() > 0)
+                {
+                    hs.WriteByte((Byte)PropertyID.kCRC);
+                    Digests.Write(hs);
+                }
 
                 hs.WriteByte((Byte)PropertyID.kEnd);
             }
@@ -224,6 +216,9 @@ namespace pdj.tiny7z
 
         public class CoderInfo : IHeaderParser, IHeaderWriter
         {
+            public const Byte AttrSizeMask      = 0b00001111;
+            public const Byte AttrComplexCoder  = 0b00010000;
+            public const Byte AttrHasAttributes = 0b00100000;
             public Byte Attributes;
             public Byte[] CodecId; // [CodecIdSize]
             public UInt64 NumInStreams;
@@ -243,9 +238,9 @@ namespace pdj.tiny7z
             public void Parse(Stream hs)
             {
                 Attributes = hs.ReadByteThrow();
-                int codecIdSize = (Attributes & 0b00001111);
-                bool isComplexCoder = (Attributes & 0b00010000) > 0;
-                bool hasAttributes = (Attributes & 0b00100000) > 0;
+                int codecIdSize = (Attributes & AttrSizeMask);
+                bool isComplexCoder = (Attributes & AttrComplexCoder) > 0;
+                bool hasAttributes = (Attributes & AttrHasAttributes) > 0;
 
                 CodecId = hs.ReadThrow((uint)codecIdSize);
 
@@ -267,9 +262,9 @@ namespace pdj.tiny7z
             public void Write(Stream hs)
             {
                 hs.WriteByte(Attributes);
-                int codecIdSize = (Attributes & 0b00001111);
-                bool isComplexCoder = (Attributes & 0b00010000) > 0;
-                bool hasAttributes = (Attributes & 0b00100000) > 0;
+                int codecIdSize = (Attributes & AttrSizeMask);
+                bool isComplexCoder = (Attributes & AttrComplexCoder) > 0;
+                bool hasAttributes = (Attributes & AttrHasAttributes) > 0;
 
                 hs.Write(CodecId, 0, codecIdSize);
 
@@ -320,11 +315,12 @@ namespace pdj.tiny7z
             public BindPairsInfo[] BindPairsInfo; // [NumBindPairs]
             public UInt64 NumPackedStreams; // NumInStreamsTotal - NumBindPairs
             public UInt64[] PackedIndices; // [NumPackedStreams]
-            
-            // start --- added from UnPackInfo
+
+            // added from UnPackInfo (for convenience):
+            // start ---
             public UInt64[] UnPackSizes; // [NumOutStreamsTotal]
-            public UInt32? UnPackCRC;
-            // end ----- added from UnPackInfo
+            public UInt32? UnPackCRC; // NULL is undefined
+            // end -----
 
             public Folder()
             {
@@ -465,7 +461,7 @@ namespace pdj.tiny7z
                         Folders[i].UnPackSizes[j] = hs.ReadDecodedUInt64();
                 }
 
-                // Optional: UnPackDigests (data stored in `FolderInfo.UnPackCRC`)
+                // Optional: UnPackDigests (data stored in `Folder.UnPackCRC`)
 
                 PropertyID propertyID = GetPropertyID(this, hs);
 
@@ -475,9 +471,9 @@ namespace pdj.tiny7z
                     UnPackDigests.Parse(hs);
                     propertyID = GetPropertyID(this, hs);
                 }
-                for (ulong i = 0, j = 0; i < NumFolders; ++i)
-                    if (UnPackDigests.Defined[i])
-                        Folders[i].UnPackCRC = UnPackDigests.CRCs[j++];
+                for (ulong i = 0; i < NumFolders; ++i)
+                    if (UnPackDigests.Defined(i))
+                        Folders[i].UnPackCRC = UnPackDigests.CRCs[i];
 
                 // end of UnPackInfo
 
@@ -510,19 +506,8 @@ namespace pdj.tiny7z
                     hs.WriteByte((Byte)PropertyID.kCRC);
 
                     var UnPackDigests = new Digests(NumFolders);
-                    UnPackDigests.CRCs = new UInt32[NumFolders];
-                    ulong j = 0;
                     for (ulong i = 0; i < NumFolders; ++i)
-                    {
-                        if (Folders[i].UnPackCRC != null)
-                        {
-                            UnPackDigests.Defined[i] = true;
-                            UnPackDigests.CRCs[j++] = (UInt32)Folders[i].UnPackCRC;
-                        }
-                        else
-                            UnPackDigests.Defined[i] = false;
-                    }
-                    UnPackDigests.NumDefined = j;
+                        UnPackDigests.CRCs[i] = Folders[i].UnPackCRC;
                     UnPackDigests.Write(hs);
                 }
 
@@ -562,7 +547,7 @@ namespace pdj.tiny7z
 
                     propertyID = GetPropertyID(this, hs);
                 }
-                else
+                else // If no records, assume `1` output stream per folder
                 {
                     NumUnPackStreamsInFolders = Enumerable.Repeat((UInt64)1, (int)unPackInfo.NumFolders).ToArray();
                     NumUnPackStreamsTotal = unPackInfo.NumFolders;
@@ -575,14 +560,14 @@ namespace pdj.tiny7z
                 {
                     for (ulong i = 0; i < unPackInfo.NumFolders; ++i)
                     {
-                        ulong num = NumUnPackStreamsInFolders[i];
+                        UInt64 num = NumUnPackStreamsInFolders[i];
                         if (num == 0)
                             continue;
 
-                        ulong sum = 0;
+                        UInt64 sum = 0;
                         for (ulong j = 1; j < num; ++j)
                         {
-                            ulong size = hs.ReadDecodedUInt64();
+                            UInt64 size = hs.ReadDecodedUInt64();
                             sum += size;
                             UnPackSizes.Add(size);
                         }
@@ -591,11 +576,13 @@ namespace pdj.tiny7z
 
                     propertyID = GetPropertyID(this, hs);
                 }
-                else
+                else // If no records, assume one unpack size per folder
                 {
                     for (ulong i = 0; i < unPackInfo.NumFolders; ++i)
                     {
                         ulong num = NumUnPackStreamsInFolders[i];
+                        if (num > 1)
+                            throw new z7Exception($"Invalid number of UnPackStreams `{num}` in Folder # `{i}`.");
                         if (num == 1)
                             UnPackSizes.Add(unPackInfo.Folders[i].GetUnPackSize());
                     }
@@ -604,13 +591,11 @@ namespace pdj.tiny7z
                 // Digests [Number of Unknown CRCs]
 
                 UInt64 numDigests = 0;
-                UInt64 numDigestsTotal = 0;
-                for (UInt64 i = 0; i < this.unPackInfo.NumFolders; ++i)
+                for (UInt64 i = 0; i < unPackInfo.NumFolders; ++i)
                 {
                     UInt64 numSubStreams = NumUnPackStreamsInFolders[i];
-                    if (numSubStreams > 1 || this.unPackInfo.Folders[i].UnPackCRC == null)
+                    if (numSubStreams > 1 || unPackInfo.Folders[i].UnPackCRC == null)
                         numDigests += numSubStreams;
-                    numDigestsTotal += numSubStreams;
                 }
 
                 if (propertyID == PropertyID.kCRC)
@@ -632,11 +617,13 @@ namespace pdj.tiny7z
                 if (NumUnPackStreamsTotal != unPackInfo.NumFolders && NumUnPackStreamsInFolders.Any())
                 {
                     hs.WriteByte((Byte)PropertyID.kNumUnPackStream);
+
                     for (long i = 0; i < NumUnPackStreamsInFolders.LongLength; ++i)
                         hs.WriteEncodedUInt64(NumUnPackStreamsInFolders[i]);
                 }
 
-                // Substreams UnPackSizes
+                // UnPackSizes
+
                 if (UnPackSizes.Any())
                 {
                     hs.WriteByte((Byte)PropertyID.kSize);
@@ -644,7 +631,7 @@ namespace pdj.tiny7z
                     List<UInt64>.Enumerator u = UnPackSizes.GetEnumerator();
                     for (long i = 0; i < NumUnPackStreamsInFolders.LongLength; ++i)
                     {
-                        for (long j = 1; j < (long)NumUnPackStreamsInFolders[i]; ++j)
+                        for (ulong j = 1; j < NumUnPackStreamsInFolders[i]; ++j)
                         {
                             if (!u.MoveNext())
                                 throw new z7Exception("Missing `SubStreamInfo.UnPackSize` entry.");
@@ -654,7 +641,9 @@ namespace pdj.tiny7z
                     }
                 }
 
-                if (Digests.NumStreams > 0)
+                // Digests [Number of unknown CRCs]
+
+                if (Digests.NumDefined() > 0)
                 {
                     hs.WriteByte((Byte)PropertyID.kCRC);
                     Digests.Write(hs);
@@ -693,7 +682,10 @@ namespace pdj.tiny7z
                             break;
                         case PropertyID.kSubStreamsInfo:
                             if (UnPackInfo == null)
+                            {
+                                Trace.TraceWarning("SubStreamsInfo block found, yet no UnPackInfo block has been parsed so far.");
                                 UnPackInfo = new UnPackInfo();
+                            }
                             SubStreamsInfo = new SubStreamsInfo(UnPackInfo);
                             SubStreamsInfo.Parse(hs);
                             break;
@@ -726,61 +718,39 @@ namespace pdj.tiny7z
             }
         }
 
-        abstract public class FileProperty : IHeaderParser, IHeaderWriter
+        public abstract class FileProperty : IHeaderParser, IHeaderWriter
         {
             public PropertyID PropertyID;
             public UInt64 NumFiles;
             public UInt64 Size;
-            long positionMarker;
             public FileProperty(PropertyID PropertyID, UInt64 NumFiles)
             {
                 this.PropertyID = PropertyID;
                 this.NumFiles = NumFiles;
                 Size = 0;
-                positionMarker = -1;
             }
 
-            public virtual void Parse(Stream hs)
+            public virtual void Parse(Stream headerStream)
             {
-                Size = hs.ReadDecodedUInt64();
-                positionMarker = hs.Position;
+                Size = headerStream.ReadDecodedUInt64();
+                ParseProperty(headerStream);
             }
-            public void PostParse(Stream hs)
+            public abstract void ParseProperty(Stream hs);
+
+            public virtual void Write(Stream headerStream)
             {
-                if (positionMarker != -1)
+                using (var dataStream = new MemoryStream())
                 {
-                    UInt64 expectedPosition = (UInt64)positionMarker + Size;
-                    if ((UInt64)hs.Position < expectedPosition)
-                    {
-                        if (hs.CanSeek)
-                            hs.Seek((long)expectedPosition, SeekOrigin.Begin);
-                        else
-                            hs.ReadThrow(expectedPosition - (UInt64)hs.Position);
-                    }
+                    WriteProperty(dataStream);
+                    Size = (UInt64)dataStream.Length;
+
+                    headerStream.WriteByte((Byte)PropertyID);
+                    headerStream.WriteEncodedUInt64(Size);
+                    dataStream.Position = 0;
+                    dataStream.CopyTo(headerStream);
                 }
             }
-
-            public virtual void Write(Stream hs)
-            {
-                // no-op
-            }
-            public void PostWrite(Stream headerStream, Stream dataStream)
-            {
-                headerStream.WriteByte((Byte)PropertyID);
-                Size = (UInt64)dataStream.Length;
-                headerStream.WriteEncodedUInt64(Size);
-
-                positionMarker = headerStream.Position;
-                long expectedPosition = positionMarker + (long)Size;
-
-                dataStream.Position = 0;
-                dataStream.CopyTo(headerStream);
-                if (headerStream.Position < expectedPosition)
-                {
-                    byte[] buffer = Enumerable.Repeat((Byte)0, (int)(expectedPosition - headerStream.Position)).ToArray();
-                    headerStream.Write(buffer, 0, buffer.Length);
-                }
-            }
+            public abstract void WriteProperty(Stream hs);
         }
 
         public class PropertyEmptyStream : FileProperty
@@ -789,15 +759,13 @@ namespace pdj.tiny7z
             public UInt64 NumEmptyStreams;
             public PropertyEmptyStream(UInt64 NumFiles) : base(PropertyID.kEmptyStream, NumFiles) { }
 
-            public override void Parse(Stream hs)
+            public override void ParseProperty(Stream hs)
             {
-                base.Parse(hs);
                 NumEmptyStreams = hs.ReadBoolVector(NumFiles, out IsEmptyStream);
             }
 
-            public override void Write(Stream hs)
+            public override void WriteProperty(Stream hs)
             {
-                base.Write(hs);
                 hs.WriteBoolVector(IsEmptyStream);
             }
         }
@@ -812,15 +780,13 @@ namespace pdj.tiny7z
                 this.NumEmptyStreams = NumEmptyStreams;
             }
 
-            public override void Parse(Stream hs)
+            public override void ParseProperty(Stream hs)
             {
-                base.Parse(hs);
                 hs.ReadBoolVector(NumEmptyStreams, out IsEmptyFile);
             }
 
-            public override void Write(Stream hs)
+            public override void WriteProperty(Stream hs)
             {
-                base.Write(hs);
                 hs.WriteBoolVector(IsEmptyFile);
             }
         }
@@ -835,15 +801,13 @@ namespace pdj.tiny7z
                 this.NumEmptyStreams = NumEmptyStreams;
             }
 
-            public override void Parse(Stream hs)
+            public override void ParseProperty(Stream hs)
             {
-                base.Parse(hs);
                 hs.ReadBoolVector(NumEmptyStreams, out IsAnti);
             }
 
-            public override void Write(Stream hs)
+            public override void WriteProperty(Stream hs)
             {
-                base.Write(hs);
                 hs.WriteBoolVector(IsAnti);
             }
         }
@@ -860,9 +824,8 @@ namespace pdj.tiny7z
             {
             }
 
-            public override void Parse(Stream hs)
+            public override void ParseProperty(Stream hs)
             {
-                base.Parse(hs);
                 NumDefined = hs.ReadOptionalBoolVector(NumFiles, out Defined);
 
                 External = hs.ReadByteThrow();
@@ -875,9 +838,9 @@ namespace pdj.tiny7z
                             {
                                 UInt64 encodedTime = reader.ReadUInt64();
                                 if (encodedTime >= 0 && encodedTime <= 2650467743999999999)
-                                {
                                     Times[i] = DateTime.FromFileTimeUtc((long)encodedTime).ToLocalTime();
-                                }
+                                else
+                                    Trace.TraceWarning($"Defined date # `{i}` is invalid.");
                             }
                         break;
                     case 1:
@@ -888,9 +851,8 @@ namespace pdj.tiny7z
                 }
             }
 
-            public override void Write(Stream hs)
+            public override void WriteProperty(Stream hs)
             {
-                base.Write(hs);
                 hs.WriteOptionalBoolVector(Defined);
                 hs.WriteByte(0);
                 using (BinaryWriter writer = new BinaryWriter(hs, Encoding.Default, true))
@@ -909,9 +871,8 @@ namespace pdj.tiny7z
             public string[] Names;
             public PropertyName(UInt64 NumFiles) : base(PropertyID.kName, NumFiles) { }
 
-            public override void Parse(Stream hs)
+            public override void ParseProperty(Stream hs)
             {
-                base.Parse(hs);
                 External = hs.ReadByteThrow();
                 if (External != 0)
                 {
@@ -941,9 +902,8 @@ namespace pdj.tiny7z
                 }
             }
 
-            public override void Write(Stream hs)
+            public override void WriteProperty(Stream hs)
             {
-                base.Write(hs);
                 hs.WriteByte(0);
                 using (BinaryWriter writer = new BinaryWriter(hs, Encoding.Default, true))
                 {
@@ -966,9 +926,8 @@ namespace pdj.tiny7z
             public UInt32[] Attributes; // [NumDefined]
             public PropertyAttributes(UInt64 NumFiles) : base(PropertyID.kWinAttributes, NumFiles) { }
 
-            public override void Parse(Stream hs)
+            public override void ParseProperty(Stream hs)
             {
-                base.Parse(hs);
                 NumDefined = hs.ReadOptionalBoolVector(NumFiles, out Defined);
 
                 External = hs.ReadByteThrow();
@@ -988,9 +947,8 @@ namespace pdj.tiny7z
                 }
             }
 
-            public override void Write(Stream hs)
+            public override void WriteProperty(Stream hs)
             {
-                base.Write(hs);
                 hs.WriteOptionalBoolVector(Defined);
                 hs.WriteByte(0);
                 using (BinaryWriter writer = new BinaryWriter(hs, Encoding.Default, true))
@@ -1003,16 +961,13 @@ namespace pdj.tiny7z
         {
             public PropertyDummy()
                 : base(PropertyID.kDummy, 0) { }
-            public override void Parse(Stream hs)
+            public override void ParseProperty(Stream hs)
             {
-                base.Parse(hs);
                 Byte[] dummy = hs.ReadThrow(Size);
             }
-            public override void Write(Stream hs)
+            public override void WriteProperty(Stream hs)
             {
-                base.Write(hs);
-                hs.WriteByte(0);
-                hs.WriteByte(0);
+                hs.Write(Enumerable.Repeat((Byte)0, (int)Size).ToArray(), 0, (int)Size);
             }
         }
 
@@ -1041,44 +996,42 @@ namespace pdj.tiny7z
                     switch (propertyID)
                     {
                         case PropertyID.kEmptyStream:
-                            {
-                                PropertyEmptyStream p = new PropertyEmptyStream(NumFiles);
-                                p.Parse(hs);
-                                p.PostParse(hs);
-                                Properties.Add(p);
-                                NumEmptyStreams = p.NumEmptyStreams;
-                                break;
-                            }
+                            property = new PropertyEmptyStream(NumFiles);
+                            property.Parse(hs);
+                            NumEmptyStreams = (property as PropertyEmptyStream).NumEmptyStreams;
+                            break;
                         case PropertyID.kEmptyFile:
                             property = new PropertyEmptyFile(NumFiles, NumEmptyStreams);
+                            property.Parse(hs);
                             break;
                         case PropertyID.kAnti:
                             property = new PropertyAnti(NumFiles, NumEmptyStreams);
+                            property.Parse(hs);
                             break;
                         case PropertyID.kCTime:
                         case PropertyID.kATime:
                         case PropertyID.kMTime:
                             property = new PropertyTime(propertyID, NumFiles);
+                            property.Parse(hs);
                             break;
                         case PropertyID.kName:
                             property = new PropertyName(NumFiles);
+                            property.Parse(hs);
                             break;
                         case PropertyID.kWinAttributes:
                             property = new PropertyAttributes(NumFiles);
+                            property.Parse(hs);
                             break;
                         case PropertyID.kDummy:
                             property = new PropertyDummy();
+                            property.Parse(hs);
                             break;
                         default:
                             throw new NotImplementedException(propertyID.ToString());
                     }
 
                     if (property != null)
-                    {
-                        property.Parse(hs);
-                        property.PostParse(hs);
                         Properties.Add(property);
-                    }
                 }
             }
 
@@ -1086,14 +1039,7 @@ namespace pdj.tiny7z
             {
                 hs.WriteEncodedUInt64(NumFiles);
                 foreach (var property in Properties)
-                {
-                    // TODO: align with dummy
-                    using (MemoryStream dataStream = new MemoryStream())
-                    {
-                        property.Write(dataStream);
-                        property.PostWrite(hs, dataStream);
-                    }
-                }
+                    property.Write(hs);
                 hs.WriteByte((Byte)PropertyID.kEnd);
             }
         }
@@ -1240,11 +1186,18 @@ namespace pdj.tiny7z
         {
             try
             {
-                if (RawHeader == null)
+                if (RawHeader != null)
+                {
+                    headerStream.WriteByte((Byte)PropertyID.kHeader);
+                    RawHeader.Write(headerStream);
+                }
+                else if (EncodedHeader != null)
+                {
+                    headerStream.WriteByte((Byte)PropertyID.kEncodedHeader);
+                    EncodedHeader.Write(headerStream);
+                }
+                else
                     throw new z7Exception("No header to write.");
-
-                headerStream.WriteByte((Byte)PropertyID.kHeader);
-                RawHeader.Write(headerStream);
             }
             catch (Exception ex)
             {

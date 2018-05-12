@@ -13,7 +13,7 @@ namespace pdj.tiny7z
     public class z7Compressor : Archive.ICompressor
     {
         /// <summary>
-        /// Files property
+        /// Files property.
         /// </summary>
         public z7ArchiveFile[] Files
         {
@@ -24,6 +24,14 @@ namespace pdj.tiny7z
         /// Setting this to true will compress all files into a solid block.
         /// </summary>
         public bool Solid
+        {
+            get; set;
+        }
+
+        /// <summary>
+        /// Setting this to true will compress headers.
+        /// </summary>
+        public bool CompressHeader
         {
             get; set;
         }
@@ -50,6 +58,7 @@ namespace pdj.tiny7z
 
             Files = new z7ArchiveFile[0];
             Solid = true;
+            CompressHeader = true;
         }
 
         /// <summary>
@@ -153,7 +162,7 @@ namespace pdj.tiny7z
                 // create main headers
                 var streamsInfo = new z7Header.StreamsInfo();
 
-                var sc = new z7StreamsCompressor(stream, streamsInfo);
+                var sc = new z7StreamsCompressor(stream);
                 sc.Codec = Compress.Codec.Query(new Compress.CodecID(0x03, 0x01, 0x01));
                 if (Solid && streamIndex > 1)
                 {
@@ -162,14 +171,15 @@ namespace pdj.tiny7z
                     var inputStream = new Common.MultiFileStream(streamToFileIndex.Select(sfi => Files[sfi.Value].InputPath + Files[sfi.Value].Name).ToArray());
                     z7StreamsCompressor.CompressedStream cs = sc.Compress(inputStream);
 
-                    Util.Dump(cs);
-
                     streamsInfo.PackInfo = new z7Header.PackInfo()
                     {
                         NumPackStreams = cs.NumStreams,
                         PackPos = 0,
                         Sizes = cs.Sizes,
-                        CRCs = new UInt32?[] { null } // cs.CRCs
+                        Digests = new z7Header.Digests(cs.NumStreams)
+                        {
+                            CRCs = cs.CRCs
+                        }
                     };
                     streamsInfo.UnPackInfo = new z7Header.UnPackInfo()
                     {
@@ -189,16 +199,11 @@ namespace pdj.tiny7z
                         NumUnPackStreamsTotal = streamIndex,
                         UnPackSizes = new List<UInt64>((int)streamIndex),
                         Digests = new z7Header.Digests(streamIndex)
-                        {
-                            CRCs = new UInt32[streamIndex]
-                        }
                     };
 
                     for (ulong i = 0; i < streamIndex; ++i)
                     {
                         streamsInfo.SubStreamsInfo.UnPackSizes.Add(inputStream.Sizes[i]);
-                        streamsInfo.SubStreamsInfo.Digests.Defined[i] = true;
-                        streamsInfo.SubStreamsInfo.Digests.NumDefined++;
                         streamsInfo.SubStreamsInfo.Digests.CRCs[i] = inputStream.CRCs[i];
                     }
                 }
@@ -220,7 +225,7 @@ namespace pdj.tiny7z
                         NumPackStreams = numPackStreams,
                         PackPos = 0,
                         Sizes = new UInt64[numPackStreams],
-                        CRCs = new UInt32?[numPackStreams]
+                        Digests = new z7Header.Digests(numPackStreams)
                     };
                     streamsInfo.UnPackInfo = new z7Header.UnPackInfo()
                     {
@@ -232,7 +237,7 @@ namespace pdj.tiny7z
                         for (ulong j = 0; j < css[i].NumStreams; ++j, ++k)
                         {
                             streamsInfo.PackInfo.Sizes[k] = css[i].Sizes[j];
-                            streamsInfo.PackInfo.CRCs[k] = css[i].CRCs[j];
+                            streamsInfo.PackInfo.Digests.CRCs[k] = css[i].CRCs[j];
                         }
                         streamsInfo.UnPackInfo.Folders[i] = css[i].Folder;
                     }
@@ -256,6 +261,43 @@ namespace pdj.tiny7z
             // write headers in temporary stream
             var headerStream = new MemoryStream();
             header.Write(headerStream);
+
+            // go through compressing again for headers
+            if (CompressHeader)
+            {
+                var sc = new z7StreamsCompressor(stream);
+                sc.Codec = Compress.Codec.Query(new Compress.CodecID(0x03, 0x01, 0x01));
+
+                headerStream.Position = 0;
+                z7StreamsCompressor.CompressedStream cs = sc.Compress(headerStream);
+
+                z7Header.StreamsInfo headerStreamsInfo = new z7Header.StreamsInfo()
+                {
+                    PackInfo = new z7Header.PackInfo()
+                    {
+                        NumPackStreams = cs.NumStreams,
+                        PackPos = (UInt64)(endOfPackedStreamsPosition - Marshal.SizeOf(typeof(z7Archive.SignatureHeader))),
+                        Sizes = cs.Sizes,
+                        Digests = new z7Header.Digests(1)
+                        {
+                            CRCs = cs.CRCs
+                        }
+                    },
+                    UnPackInfo = new z7Header.UnPackInfo()
+                    {
+                        Folders = new z7Header.Folder[1] { cs.Folder },
+                        NumFolders = 1
+                    }
+                };
+                header.RawHeader = null;
+                header.EncodedHeader = headerStreamsInfo;
+
+                headerStream.Dispose();
+                headerStream = new MemoryStream();
+                header.Write(headerStream);
+
+                endOfPackedStreamsPosition = this.stream.Position;
+            }
 
             // create start header and calculate header crc
             headerStream.Position = 0;

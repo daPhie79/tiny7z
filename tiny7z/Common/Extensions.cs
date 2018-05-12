@@ -96,6 +96,14 @@ namespace pdj.tiny7z.Common
         }
 
         /// <summary>
+        /// Calculates size of a boolean vector in bytes
+        /// </summary>
+        public static UInt64 BoolVectorSize(bool[] vector)
+        {
+            return ((UInt64)vector.LongLength + 7) / 8;
+        }
+
+        /// <summary>
         /// Stream extension to get a struct out of a byte sequence
         /// </summary>
         public static T ReadStruct<T>(this Stream stream) where T : struct
@@ -164,6 +172,18 @@ namespace pdj.tiny7z.Common
             }
             stream.Write(data.ToArray(), 0, data.Count);
             return data.Count;
+        }
+
+        /// <summary>
+        /// Calculates one encoded 64-bits integer's actual size in bytes
+        /// </summary>
+        public static int EncodedUInt64Size(UInt64 y)
+        {
+            int i;
+            for (i = 1; i < 9; i++)
+                if (y < (((UInt64)1 << (i * 7))))
+                    break;
+            return i;
         }
 
         /// <summary>

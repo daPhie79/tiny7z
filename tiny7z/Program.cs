@@ -28,13 +28,12 @@ namespace pdj.tiny7z
             Trace.AutoFlush = true;
 
             new Compress.CodecLZMA();
-            /*
             try
             {
                 string destFileName = Path.Combine(InternalBase, "OutputTest.7z");
                 z7Archive f = new z7Archive(File.Create(destFileName), FileAccess.Write);
                 var cmp = f.Compressor();
-                (cmp as z7Compressor).Solid = false;
+                (cmp as z7Compressor).Solid = true;
                 cmp.CompressAll(@"D:\ALLROMS\My Selection\PCE", true);
                 f.Dump();
                 f.Close();
@@ -43,7 +42,6 @@ namespace pdj.tiny7z
             {
                 Trace.TraceError(ex.Message + ex.StackTrace);
             }
-            */
 
             try {
                 string sourceFileName = Path.Combine(InternalBase, "OutputTest.7z");
