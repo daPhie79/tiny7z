@@ -6,6 +6,7 @@ using System.IO;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows.Forms;
 
 namespace pdj.tiny7z
 {
@@ -13,6 +14,7 @@ namespace pdj.tiny7z
     {
         public static readonly string InternalBase = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
 
+        [STAThread]
         static void Main(string[] args)
         {
             try
@@ -27,6 +29,8 @@ namespace pdj.tiny7z
                 Path.Combine(Program.InternalBase, "debuglog.txt")));
             Trace.AutoFlush = true;
 
+            // try compression
+
             new Compress.CodecLZMA();
             try
             {
@@ -34,20 +38,29 @@ namespace pdj.tiny7z
                 z7Archive f = new z7Archive(File.Create(destFileName), FileAccess.Write);
                 var cmp = f.Compressor();
                 (cmp as z7Compressor).Solid = true;
-                cmp.CompressAll(@"D:\ALLROMS\My Selection\PCE", true);
-                f.Dump();
-                f.Close();
-            }
-            catch (Exception ex)
-            {
-                Trace.TraceError(ex.Message + ex.StackTrace);
-            }
+                (cmp as z7Compressor).CompressHeader = true;
 
-            try {
-                string sourceFileName = Path.Combine(InternalBase, "OutputTest.7z");
-                z7Archive f2 = new z7Archive(File.OpenRead(sourceFileName), FileAccess.Read);
-                var ext = f2.Extractor();
-                f2.Dump();
+                FolderBrowserDialog fbd = new FolderBrowserDialog();
+                if (fbd.ShowDialog() == DialogResult.OK)
+                {
+                    if (!Directory.Exists(fbd.SelectedPath))
+                        throw new ApplicationException("Path not found.");
+                    cmp.CompressAll(fbd.SelectedPath, true);
+                    f.Dump();
+                    f.Close();
+
+                    // try decompression
+
+                    string sourceFileName = Path.Combine(InternalBase, "OutputTest.7z");
+                    z7Archive f2 = new z7Archive(File.OpenRead(sourceFileName), FileAccess.Read);
+                    var ext = f2.Extractor();
+                    f2.Dump();
+                }
+                else
+                {
+                    Trace.TraceWarning("Cancelling...");
+                }
+
             }
             catch (Exception ex)
             {

@@ -10,13 +10,13 @@ namespace pdj.tiny7z
 {
     public class z7ArchiveFile : ArchiveFile
     {
-        public Int64 UnPackIndex;
+        public UInt64? UnPackIndex;
         public string InputPath;
         public z7ArchiveFile()
             : base()
         {
-            this.UnPackIndex = -1;
-            this.InputPath = string.Empty;
+            this.UnPackIndex = null;
+            this.InputPath = null;
         }
     }
 }

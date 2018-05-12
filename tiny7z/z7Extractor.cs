@@ -78,7 +78,8 @@ namespace pdj.tiny7z
                     {
                         Trace.TraceInformation($"Create directory \"{file.Name}\"");
                         Directory.CreateDirectory(fullPath);
-                        Directory.SetLastWriteTimeUtc(fullPath, file.Time);
+                        if (file.Time != null)
+                            Directory.SetLastWriteTimeUtc(fullPath, (DateTime)file.Time);
                     }
                 }
                 else if (file.IsEmpty)
@@ -87,7 +88,8 @@ namespace pdj.tiny7z
                     {
                         Trace.TraceInformation($"Creating empty file \"{file.Name}\"");
                         File.WriteAllBytes(fullPath, new byte[0]);
-                        File.SetLastWriteTimeUtc(fullPath, file.Time);
+                        if (file.Time != null)
+                            File.SetLastWriteTimeUtc(fullPath, (DateTime)file.Time);
                     }
                 }
                 else if (file.IsDeleted)
@@ -112,7 +114,8 @@ namespace pdj.tiny7z
                     {
                         using (var outputStream = File.Create(fullPath))
                             fileStream.CopyTo(outputStream);
-                        File.SetLastWriteTimeUtc(fullPath, file.Time);
+                        if (file.Time != null)
+                            File.SetLastWriteTimeUtc(fullPath, (DateTime)file.Time);
                     }
                 });
 
@@ -160,8 +163,7 @@ namespace pdj.tiny7z
                         break;
                     case z7Header.PropertyID.kMTime:
                         for (long i = 0; i < Files.LongLength; ++i)
-                            if ((properties as z7Header.PropertyTime).Defined[i])
-                                Files[i].Time = (properties as z7Header.PropertyTime).Times[i];
+                            Files[i].Time = (properties as z7Header.PropertyTime).Times[i];
                         break;
                     case z7Header.PropertyID.kName:
                         for (long i = 0; i < Files.LongLength; ++i)
@@ -169,8 +171,7 @@ namespace pdj.tiny7z
                         break;
                     case z7Header.PropertyID.kWinAttributes:
                         for (long i = 0; i < Files.LongLength; ++i)
-                            if ((properties as z7Header.PropertyAttributes).Defined[i])
-                                Files[i].Attributes = (properties as z7Header.PropertyAttributes).Attributes[i];
+                            Files[i].Attributes = (properties as z7Header.PropertyAttributes).Attributes[i];
                         break;
                 }
             }
@@ -214,7 +215,7 @@ namespace pdj.tiny7z
                         if (++fileIndex >= Files.LongLength)
                             throw new z7Exception("Missing Files entries for defined sizes.");
                     Files[fileIndex].Size = size;
-                    Files[fileIndex].UnPackIndex = streamIndex++;
+                    Files[fileIndex].UnPackIndex = (UInt64?)streamIndex++;
                 }
             }
 

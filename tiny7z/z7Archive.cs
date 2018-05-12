@@ -145,7 +145,6 @@ namespace pdj.tiny7z
         /// </summary>
         public void Dump()
         {
-            Util.Dump(Header);
         }
 
         /// <summary>
@@ -191,7 +190,6 @@ namespace pdj.tiny7z
                     throw new z7Exception("Reached end of file before end of header.");
                 }
 
-                File.WriteAllBytes(Path.Combine(Program.InternalBase, "header.bin"), buffer); // DEBUG
                 {
                     uint crc32 = CRC.Calculate(buffer);
                     if (crc32 != sig.StartHeader.NextHeaderCRC)
@@ -213,13 +211,11 @@ namespace pdj.tiny7z
                     Trace.TraceInformation("Encoded header detected, decompressing.");
                     Stream newHeaderStream = (new z7StreamsExtractor(stream, Header.EncodedHeader)).Extract(0);
 
-                    newHeaderStream.CopyTo(File.Create(Path.Combine(Program.InternalBase, "decompressedheader.bin"))); // DEBUG
-                    newHeaderStream.Position = 0; // DEBUG
-
                     Trace.TraceInformation("Parsing decompressed header.");
+                    newHeaderStream.Position = 0;
                     z7Header
                         newHeader = new z7Header(newHeaderStream);
-                    newHeader.Parse();
+                        newHeader.Parse();
                     Header = newHeader;
                 }
 

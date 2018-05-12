@@ -261,4 +261,4 @@ __pycache__/
 *.pyc
 
 # CUSTOM ADDED
-tiny7z/7zip/LZMAAlone/*
+ToDo.txt

@@ -637,7 +637,7 @@ namespace pdj.tiny7z
                                 throw new z7Exception("Missing `SubStreamInfo.UnPackSize` entry.");
                             hs.WriteEncodedUInt64(u.Current);
                         }
-                        u.MoveNext(); // skip the `useless` one
+                        u.MoveNext(); // skip the `unneeded` one
                     }
                 }
 
@@ -814,11 +814,9 @@ namespace pdj.tiny7z
 
         public class PropertyTime : FileProperty
         {
-            public bool[] Defined; // [NumFiles]
-            public UInt64 NumDefined;
             public Byte External;
             public UInt64 DataIndex;
-            public DateTime[] Times; // [NumDefined]
+            public DateTime?[] Times; // [NumFiles]
             public PropertyTime(PropertyID propertyID, UInt64 NumFiles)
                 : base(propertyID, NumFiles)
             {
@@ -826,21 +824,27 @@ namespace pdj.tiny7z
 
             public override void ParseProperty(Stream hs)
             {
-                NumDefined = hs.ReadOptionalBoolVector(NumFiles, out Defined);
+                bool[] defined;
+                var numDefined = hs.ReadOptionalBoolVector(NumFiles, out defined);
 
                 External = hs.ReadByteThrow();
                 switch (External)
                 {
                     case 0:
-                        Times = new DateTime[NumDefined];
+                        Times = new DateTime?[NumFiles];
                         using (BinaryReader reader = new BinaryReader(hs, Encoding.Default, true))
-                            for (ulong i = 0; i < NumDefined; ++i)
+                            for (ulong i = 0; i < NumFiles; ++i)
                             {
-                                UInt64 encodedTime = reader.ReadUInt64();
-                                if (encodedTime >= 0 && encodedTime <= 2650467743999999999)
-                                    Times[i] = DateTime.FromFileTimeUtc((long)encodedTime).ToLocalTime();
+                                if (defined[i])
+                                {
+                                    UInt64 encodedTime = reader.ReadUInt64();
+                                    if (encodedTime >= 0 && encodedTime <= 2650467743999999999)
+                                        Times[i] = DateTime.FromFileTimeUtc((long)encodedTime).ToLocalTime();
+                                    else
+                                        Trace.TraceWarning($"Defined date # `{i}` is invalid.");
+                                }
                                 else
-                                    Trace.TraceWarning($"Defined date # `{i}` is invalid.");
+                                    Times[i] = null;
                             }
                         break;
                     case 1:
@@ -853,14 +857,16 @@ namespace pdj.tiny7z
 
             public override void WriteProperty(Stream hs)
             {
-                hs.WriteOptionalBoolVector(Defined);
+                bool[] defined = Times.Select(time => time != null).ToArray();
+                hs.WriteOptionalBoolVector(defined);
                 hs.WriteByte(0);
                 using (BinaryWriter writer = new BinaryWriter(hs, Encoding.Default, true))
-                    for (ulong i = 0; i < NumDefined; ++i)
-                    {
-                        UInt64 encodedTime = (UInt64)Times[i].ToUniversalTime().ToFileTimeUtc();
-                        writer.Write((UInt64)encodedTime);
-                    }
+                    for (ulong i = 0; i < NumFiles; ++i)
+                        if(Times[i] != null)
+                        {
+                            UInt64 encodedTime = (UInt64)(((DateTime)Times[i]).ToUniversalTime().ToFileTimeUtc());
+                            writer.Write((UInt64)encodedTime);
+                        }
             }
         }
 
@@ -919,25 +925,24 @@ namespace pdj.tiny7z
 
         public class PropertyAttributes : FileProperty
         {
-            public bool[] Defined; // [NumFiles]
-            public UInt64 NumDefined;
             public Byte External;
             public UInt64 DataIndex;
-            public UInt32[] Attributes; // [NumDefined]
+            public UInt32?[] Attributes; // [NumFiles]
             public PropertyAttributes(UInt64 NumFiles) : base(PropertyID.kWinAttributes, NumFiles) { }
 
             public override void ParseProperty(Stream hs)
             {
-                NumDefined = hs.ReadOptionalBoolVector(NumFiles, out Defined);
+                bool[] defined;
+                var numDefined = hs.ReadOptionalBoolVector(NumFiles, out defined);
 
                 External = hs.ReadByteThrow();
                 switch (External)
                 {
                     case 0:
-                        Attributes = new UInt32[NumDefined];
+                        Attributes = new UInt32?[NumFiles];
                         using (BinaryReader reader = new BinaryReader(hs, Encoding.Default, true))
-                            for (ulong i = 0; i < NumDefined; ++i)
-                                Attributes[i] = reader.ReadUInt32();
+                            for (ulong i = 0; i < NumFiles; ++i)
+                                Attributes[i] = defined[i] ? (UInt32?)reader.ReadUInt32() : null;
                         break;
                     case 1:
                         DataIndex = hs.ReadDecodedUInt64();
@@ -949,11 +954,13 @@ namespace pdj.tiny7z
 
             public override void WriteProperty(Stream hs)
             {
-                hs.WriteOptionalBoolVector(Defined);
+                bool[] defined = Attributes.Select(attr => attr != null).ToArray();
+                hs.WriteOptionalBoolVector(defined);
                 hs.WriteByte(0);
                 using (BinaryWriter writer = new BinaryWriter(hs, Encoding.Default, true))
-                    for (ulong i = 0; i < NumDefined; ++i)
-                        writer.Write((UInt32)Attributes[i]);
+                    for (ulong i = 0; i < NumFiles; ++i)
+                        if (defined[i])
+                            writer.Write((UInt32)Attributes[i]);
             }
         }
 

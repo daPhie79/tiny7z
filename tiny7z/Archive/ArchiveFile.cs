@@ -9,9 +9,9 @@ namespace pdj.tiny7z.Archive
     {
         public string Name;
         public UInt64 Size;
-        public UInt32 CRC;
-        public DateTime Time;
-        public UInt32 Attributes;
+        public UInt32? CRC;
+        public DateTime? Time;
+        public UInt32? Attributes;
         public bool IsEmpty;
         public bool IsDirectory;
         public bool IsDeleted;
@@ -19,9 +19,9 @@ namespace pdj.tiny7z.Archive
         {
             Name = string.Empty;
             Size = 0;
-            CRC = 0;
-            Time = DateTime.Now;
-            Attributes = 0;
+            CRC = null;
+            Time = null;
+            Attributes = null;
             IsEmpty = false;
             IsDirectory = false;
             IsDeleted = false;
