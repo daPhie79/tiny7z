@@ -1,176 +1,122 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace pdj.tiny7z.Common
 {
     /// <summary>
     /// MultiFileStream - Allows treating a bunch of files sequentially to behave as if they're one stream.
     /// </summary>
-    public class MultiFileStream : Stream
+    public class MultiFileStream : MultiStreamBase
     {
-        public string[] Names
+        /// <summary>
+        /// Multi-purpose container class. Holds either a file path or an already opened stream.
+        /// </summary>
+        public class Source
         {
-            get; private set;
-        }
-
-        public UInt64[] Sizes
-        {
-            get; private set;
-        }
-
-        public UInt32[] CRCs
-        {
-            get; private set;
-        }
-
-        private CRCStream internalStream;
-        private long currentIndex;
-
-        public override bool CanRead => true;
-
-        public override bool CanSeek => false;
-
-        public override bool CanWrite => false;
-
-        public override long Length => Sizes.Sum(size => (long)size);
-
-        public override long Position
-        {
-            get
+            public Stream Get(FileAccess fileAccess)
             {
-                UInt64 startOffset = 0;
-                long i = 0;
-                foreach (var fileSize in Sizes)
-                    if (i++ < currentIndex)
-                        startOffset += fileSize;
-                return (long)startOffset + (internalStream != null ? internalStream.Position : 0);
+                Stream s = null;
+                if (this.stream != null)
+                {
+                    s = this.stream;
+                    if ((fileAccess == FileAccess.Read && !s.CanRead) || (fileAccess == FileAccess.Write && !s.CanWrite))
+                        throw new IOException();
+                }
+                else if (this.filePath != null)
+                {
+                    if (fileAccess == FileAccess.Read)
+                        s = File.Open(this.filePath, FileMode.Open, FileAccess.Read);
+                    else
+                        s = File.Open(this.filePath, FileMode.Create, FileAccess.Write);
+                }
+                Clear();
+                return s;
             }
-            set
+            public long Size()
             {
-                throw new NotImplementedException();
+                if (this.stream != null)
+                    return this.stream.Length;
+                else if (this.filePath != null)
+                    return new FileInfo(this.filePath).Length;
+                return -1;
+            }
+            public Source Set(Stream stream)
+            {
+                this.stream = stream;
+                this.filePath = null;
+                return this;
+            }
+            public Source Set(string filePath)
+            {
+                this.stream = null;
+                this.filePath = filePath;
+                return this;
+            }
+            public Source Clear()
+            {
+                this.stream = null;
+                this.filePath = null;
+                return this;
+            }
+
+            Stream stream;
+            string filePath;
+
+            public Source()
+            {
+                this.stream = null;
+                this.filePath = null;
+            }
+            public Source(string FilePath)
+            {
+                this.stream = null;
+                this.filePath = FilePath;
+            }
+            public Source(Stream Stream)
+            {
+                this.stream = Stream;
+                this.filePath = null;
             }
         }
 
-        public MultiFileStream()
-            : base()
+        /// <summary>
+        /// Overridden method returns source from list as next stream!
+        /// </summary>
+        protected override Stream NextStream()
         {
-            Names = new string[0];
-            Sizes = new UInt64[0];
-            CRCs = new UInt32[0];
-            internalStream = null;
-            currentIndex = 0;
+            return this.Sources[currentIndex].Get(this.fileAccess);
         }
 
-        public MultiFileStream(params string[] fileNames)
-            : base()
+        /// <summary>
+        /// List of sources
+        /// </summary>
+        public Source[] Sources
         {
-            if (fileNames == null || fileNames.Length == 0)
+            get; private set;
+        }
+
+        /// <summary>
+        /// Private member: remember either read or write access.
+        /// </summary>
+        private FileAccess fileAccess;
+
+        /// <summary>
+        /// Straightforward stream initialization.
+        /// </summary>
+        public MultiFileStream(FileAccess fileAccess, params Source[] sources)
+            : base((ulong)sources.LongLength)
+        {
+            if (fileAccess == FileAccess.ReadWrite)
+                throw new ArgumentException();
+            if (sources == null || sources.Length == 0)
                 throw new ArgumentOutOfRangeException();
 
-            this.Names = fileNames;
-            this.Sizes = new UInt64[fileNames.LongLength];
-            this.CRCs = new UInt32[fileNames.LongLength];
-            for (long i = 0; i < fileNames.LongLength; ++i)
-                this.Sizes[i] = (ulong)new FileInfo(fileNames[i]).Length;
-
-            internalStream = new CRCStream(File.OpenRead(fileNames[0]));
-            currentIndex = 0;
-        }
-
-        public override void Write(byte[] array, int offset, int count)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override void WriteByte(byte value)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override int Read(byte[] array, int offset, int count)
-        {
-            int read = 0;
-            if (internalStream is Stream)
+            this.fileAccess = fileAccess;
+            this.Sources = sources;
+            for (long i = 0; i < sources.LongLength; ++i)
             {
-                while (count > 0)
-                {
-                    int r = internalStream.Read(array, offset, count);
-                    if (r == 0)
-                    {
-                        CRCs[currentIndex] = internalStream.CRC;
-                        internalStream.Dispose();
-                        if (++currentIndex < Names.LongLength)
-                        {
-                            internalStream = new CRCStream(File.OpenRead(Names[currentIndex]));
-                        }
-                        else
-                        {
-                            internalStream = null;
-                            break;
-                        }
-                    }
-                    else
-                    {
-                        offset += r;
-                        read += r;
-                        count -= r;
-                    }
-                }
-            }
-            return read;
-        }
-
-        public override int ReadByte()
-        {
-            int r = -1;
-            if (internalStream is Stream)
-            {
-                r = internalStream.ReadByte();
-                if(r == -1)
-                {
-                    this.CRCs[currentIndex] = internalStream.CRC;
-                    internalStream.Dispose();
-                    if (++currentIndex < Names.LongCount())
-                    {
-                        internalStream = new CRCStream(File.OpenRead(Names[(int)currentIndex]));
-                        return ReadByte();
-                    }
-                    else
-                    {
-                        internalStream = null;
-                    }
-                }
-            }
-            return r;
-        }
-
-        public override void Flush()
-        {
-            throw new NotImplementedException();
-        }
-
-        public override long Seek(long offset, SeekOrigin origin)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override void SetLength(long value)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override void Close()
-        {
-            if (internalStream is Stream)
-            {
-                internalStream.Dispose();
-                internalStream = null;
+                this.Sizes[i] = Sources[i].Size();
             }
         }
     }
 }
-

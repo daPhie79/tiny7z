@@ -16,7 +16,7 @@
     <PlatformTarget>AnyCPU</PlatformTarget>
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
+    <Optimize>true</Optimize>
     <OutputPath>bin\Debug\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
@@ -24,13 +24,14 @@
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
-    <DebugType>pdbonly</DebugType>
+    <DebugType>none</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>bin\Release\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <Prefer32Bit>false</Prefer32Bit>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <PropertyGroup>
     <StartupObject />
@@ -50,8 +51,10 @@
     <Compile Include="Archive\ArchiveFile.cs" />
     <Compile Include="Common\Streams\CRCStream.cs" />
     <Compile Include="Common\Streams\MultiFileStream.cs" />
+    <Compile Include="7zip\z7Compressor.cs" />
     <Compile Include="Common\Streams\MultiStream.cs" />
-    <Compile Include="z7Compressor.cs" />
+    <Compile Include="Common\Streams\MultiStreamBase.cs" />
+    <Compile Include="Common\Streams\NullStream.cs" />
     <Compile Include="Common\Streams\SubStream.cs" />
     <Compile Include="Compress\Codec.cs" />
     <Compile Include="Compress\CodecID.cs" />
@@ -69,16 +72,16 @@
     <Compile Include="Compress\ICoder.cs" />
     <Compile Include="Common\CRC.cs" />
     <Compile Include="Common\Extensions.cs" />
-    <Compile Include="z7ArchiveFile.cs" />
-    <Compile Include="z7Exception.cs" />
-    <Compile Include="z7Extractor.cs" />
-    <Compile Include="z7Archive.cs" />
+    <Compile Include="7zip\z7ArchiveFile.cs" />
+    <Compile Include="7zip\z7Exception.cs" />
+    <Compile Include="7zip\z7Extractor.cs" />
+    <Compile Include="7zip\z7Archive.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="z7StreamsCompressor.cs" />
-    <Compile Include="z7StreamsExtractor.cs" />
-    <Compile Include="z7Header.cs" />
-    <Compile Include="z7Interfaces.cs" />
-    <Compile Include="z7Methods.cs" />
+    <Compile Include="7zip\z7StreamsCompressor.cs" />
+    <Compile Include="7zip\z7StreamsExtractor.cs" />
+    <Compile Include="7zip\z7Header.cs" />
+    <Compile Include="Archive\Interfaces.cs" />
+    <Compile Include="7zip\z7Methods.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

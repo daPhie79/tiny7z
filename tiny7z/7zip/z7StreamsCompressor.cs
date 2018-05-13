@@ -1,42 +1,14 @@
-﻿using pdj.tiny7z.Compress;
+﻿using pdj.tiny7z.Common;
+using pdj.tiny7z.Compress;
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace pdj.tiny7z
 {
     class z7StreamsCompressor
     {
-        /// <summary>
-        /// This allows setting main compression codec
-        /// </summary>
-        public Compress.Codec Codec
-        {
-            get; set;
-        }
-
-        /// <summary>
-        /// Private variables
-        /// </summary>
-        Stream stream;
-
-        /// <summary>
-        /// Default constructor.
-        /// </summary>
-        public z7StreamsCompressor(Stream stream)
-        {
-            this.stream = stream;
-            Codec = null;
-        }
-
-        /// <summary>
-        /// Contains data needed to create a header after compressing one or more streams.
-        /// </summary>
-        public class CompressedStream
+        public class PackedStream
         {
             public UInt64 NumStreams;
             public UInt64[] Sizes;
@@ -44,14 +16,23 @@ namespace pdj.tiny7z
             public z7Header.Folder Folder;
         }
 
-        /// <summary>
-        /// Compresses a stream (can be multiple files as well, as long as SubStreamsInfo is properly created afterwards).
-        /// </summary>
-        public CompressedStream Compress(Stream inputStream)
+        public Codec Codec
+        {
+            get; set;
+        }
+
+        Stream stream;
+
+        public z7StreamsCompressor(Stream stream)
+        {
+            this.stream = stream;
+            Codec = null;
+        }
+
+        public PackedStream Compress(Stream inputStream)
         {
             // create compressed stream information structure
-
-            var cs = new CompressedStream()
+            var ps = new PackedStream()
             {
                 NumStreams = 1,
                 Sizes = new UInt64[1] { 0 },
@@ -78,7 +59,6 @@ namespace pdj.tiny7z
             };
 
             // get and setup compressor
-
             ICoder encoder = Codec.GetCompressor();
             if (encoder is IWriteCoderProperties)
             {
@@ -86,27 +66,28 @@ namespace pdj.tiny7z
                 {
                     (encoder as IWriteCoderProperties).WriteCoderProperties(propsStream);
 
-                    cs.Folder.CodersInfo[0].Attributes |= (Byte)z7Header.CoderInfo.AttrHasAttributes;
-                    cs.Folder.CodersInfo[0].Properties = propsStream.ToArray();
-                    cs.Folder.CodersInfo[0].PropertiesSize = (UInt64)cs.Folder.CodersInfo[0].Properties.Length;
+                    ps.Folder.CodersInfo[0].Attributes |= (Byte)z7Header.CoderInfo.AttrHasAttributes;
+                    ps.Folder.CodersInfo[0].Properties = propsStream.ToArray();
+                    ps.Folder.CodersInfo[0].PropertiesSize = (UInt64)ps.Folder.CodersInfo[0].Properties.Length;
                 }
             }
 
+            // encode while calculating CRCs
             long outStreamStartOffset = this.stream.Position;
             long inStreamStartOffset = inputStream.Position;
-            using (Common.CRCStream inCRCStream = new Common.CRCStream(inputStream))
-            using (Common.CRCStream outCRCStream = new Common.CRCStream(stream))
+            using (var inCRCStream = new Common.CRCStream(inputStream))
+            using (var outCRCStream = new Common.CRCStream(stream))
             {
                 encoder.Code(inCRCStream, outCRCStream, -1, -1, null);
                 stream.Flush();
 
-                cs.Folder.UnPackSizes[0] = (UInt64)(inputStream.Position - inStreamStartOffset);
-                cs.Folder.UnPackCRC = inCRCStream.CRC;
-                cs.Sizes[0] = (UInt64)(this.stream.Position - outStreamStartOffset);
-                cs.CRCs[0] = outCRCStream.CRC;
+                ps.Folder.UnPackSizes[0] = (UInt64)(inputStream.Position - inStreamStartOffset);
+                ps.Folder.UnPackCRC = inCRCStream.CRC;
+                ps.Sizes[0] = (UInt64)(this.stream.Position - outStreamStartOffset);
+                ps.CRCs[0] = outCRCStream.CRC;
             }
 
-            return cs;
+            return ps;
         }
 
     }

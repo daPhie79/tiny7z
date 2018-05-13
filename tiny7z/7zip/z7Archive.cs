@@ -209,7 +209,8 @@ namespace pdj.tiny7z
                 if (Header.RawHeader == null && Header.EncodedHeader != null)
                 {
                     Trace.TraceInformation("Encoded header detected, decompressing.");
-                    Stream newHeaderStream = (new z7StreamsExtractor(stream, Header.EncodedHeader)).Extract(0);
+                    Stream newHeaderStream = new MemoryStream();
+                    (new z7StreamsExtractor(stream, Header.EncodedHeader)).Extract(0, newHeaderStream);
 
                     Trace.TraceInformation("Parsing decompressed header.");
                     newHeaderStream.Position = 0;

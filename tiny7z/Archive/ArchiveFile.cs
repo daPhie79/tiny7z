@@ -8,7 +8,7 @@ namespace pdj.tiny7z.Archive
     public class ArchiveFile
     {
         public string Name;
-        public UInt64 Size;
+        public UInt64? Size;
         public UInt32? CRC;
         public DateTime? Time;
         public UInt32? Attributes;
@@ -17,8 +17,8 @@ namespace pdj.tiny7z.Archive
         public bool IsDeleted;
         public ArchiveFile()
         {
-            Name = string.Empty;
-            Size = 0;
+            Name = null;
+            Size = null;
             CRC = null;
             Time = null;
             Attributes = null;

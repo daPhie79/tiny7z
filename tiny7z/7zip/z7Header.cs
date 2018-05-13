@@ -1,4 +1,5 @@
-﻿using pdj.tiny7z.Common;
+﻿using pdj.tiny7z.Archive;
+using pdj.tiny7z.Common;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;

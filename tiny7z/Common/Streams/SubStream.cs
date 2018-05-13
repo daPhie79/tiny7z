@@ -24,7 +24,12 @@ namespace pdj.tiny7z.Common
         public override long Position
         {
             get => internalStream.Position - startOffset;
-            set => internalStream.Position = ((value > windowSize) ? windowSize : value) + startOffset;
+            set
+            {
+                if (value < 0) value = 0;
+                if (value > windowSize) value = windowSize;
+                internalStream.Position = startOffset + windowSize;
+            }
         }
 
         public SubStream() : base() { }
@@ -39,6 +44,9 @@ namespace pdj.tiny7z.Common
         public SubStream(Stream stream, long startOffset, long windowSize)
             : base()
         {
+            if (startOffset < 0 || startOffset > stream.Length || windowSize <= 0)
+                throw new ArgumentOutOfRangeException();
+
             this.internalStream = stream;
             this.startOffset = startOffset;
             this.windowSize = windowSize;

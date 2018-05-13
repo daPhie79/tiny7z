@@ -34,18 +34,38 @@ namespace pdj.tiny7z
             new Compress.CodecLZMA();
             try
             {
-                string destFileName = Path.Combine(InternalBase, "OutputTest.7z");
-                z7Archive f = new z7Archive(File.Create(destFileName), FileAccess.Write);
-                var cmp = f.Compressor();
-                (cmp as z7Compressor).Solid = true;
-                (cmp as z7Compressor).CompressHeader = true;
+                /*
+                var ofd = new OpenFileDialog();
+                if (ofd.ShowDialog() == DialogResult.OK)
+                {
+                    if (!File.Exists(ofd.FileName))
+                        throw new ApplicationException("File not found.");
+
+                    z7Archive f = new z7Archive(File.Create(ofd.FileName + ".7z"), FileAccess.Write);
+                    z7Compressor cmp = (z7Compressor)f.Compressor();
+                    cmp.Solid = true;
+                    cmp.CompressHeader = false;
+                    cmp.AddFile(ofd.FileName);
+                    cmp.Finalize();
+                    cmp = null;
+                    f.Close();
+                }
+                */
 
                 FolderBrowserDialog fbd = new FolderBrowserDialog();
                 if (fbd.ShowDialog() == DialogResult.OK)
                 {
                     if (!Directory.Exists(fbd.SelectedPath))
                         throw new ApplicationException("Path not found.");
-                    cmp.CompressAll(fbd.SelectedPath, true);
+
+                    string destFileName = Path.Combine(InternalBase, "OutputTest.7z");
+                    z7Archive f = new z7Archive(File.Create(destFileName), FileAccess.Write);
+                    var cmp = f.Compressor();
+                    (cmp as z7Compressor).Solid = true;
+                    (cmp as z7Compressor).CompressHeader = true;
+
+                    cmp.AddDirectory(fbd.SelectedPath);
+                    cmp.Finalize();
                     f.Dump();
                     f.Close();
 
@@ -55,12 +75,12 @@ namespace pdj.tiny7z
                     z7Archive f2 = new z7Archive(File.OpenRead(sourceFileName), FileAccess.Read);
                     var ext = f2.Extractor();
                     f2.Dump();
+                    ext.ExtractArchive(Path.Combine(InternalBase, "test"));
                 }
                 else
                 {
                     Trace.TraceWarning("Cancelling...");
                 }
-
             }
             catch (Exception ex)
             {

@@ -1,9 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace pdj.tiny7z.Common
 {
@@ -15,10 +11,7 @@ namespace pdj.tiny7z.Common
         /// <summary>
         /// Access this once all stream has been read and it will be the stream's CRC32 value.
         /// </summary>
-        public UInt32 CRC
-        {
-            get => ~crc;
-        }
+        public uint CRC => ~crc;
 
         private Stream internalStream;
         private uint crc;
@@ -26,9 +19,9 @@ namespace pdj.tiny7z.Common
 
         public override bool CanRead => internalStream is Stream && internalStream.CanRead;
 
-        public override bool CanSeek => false;
+        public override bool CanWrite => internalStream is Stream && internalStream.CanWrite;
 
-        public override bool CanWrite => false;
+        public override bool CanSeek => false;
 
         public override long Length => internalStream is Stream ? internalStream.Length : -1;
 
@@ -64,9 +57,9 @@ namespace pdj.tiny7z.Common
 
         public override void Close()
         {
-            if (!leaveOpen)
+            if (internalStream != null && !leaveOpen)
             {
-                internalStream.Dispose();
+                internalStream.Close();
             }
             internalStream = null;
         }

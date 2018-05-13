@@ -15,14 +15,4 @@ namespace pdj.tiny7z.Archive
         IExtractor Extractor();
         ICompressor Compressor();
     }
-
-    public interface IExtractor
-    {
-        IExtractor ExtractAll(string outputPath, bool overwriteExistingFiles = false);
-    }
-
-    public interface ICompressor
-    {
-        ICompressor CompressAll(string inputPath, bool recursive = true);
-    }
 }
