@@ -4,7 +4,7 @@ using System.Linq;
 
 namespace pdj.tiny7z.Common
 {
-    public abstract class MultiStreamBase : Stream
+    public abstract class AbstractMultiStream : Stream
     {
         /// <summary>
         /// This is called when current stream is exhausted, to prepare next stream.
@@ -99,7 +99,7 @@ namespace pdj.tiny7z.Common
         /// <summary>
         /// The only required parameter is (max) number of streams.
         /// </summary>
-        public MultiStreamBase(UInt64 numStreams)
+        public AbstractMultiStream(UInt64 numStreams)
             : base()
         {
             if (numStreams == 0)

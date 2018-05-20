@@ -38,7 +38,7 @@ Header structure
       PackPos
       NumPackStreams
       Sizes[NumPackStreams]
-      CRCs[NumPackStreams]
+      CRCs[NumPackStreams] (Digests)
     }
     UnPackInfo
     {
@@ -63,13 +63,13 @@ Header structure
         PackedIndices
       }
       UnPackSize[NumFolders][Folders.NumOutstreams]
-      CRCs[NumFolders]
+      CRCs[NumFolders] (Digests)
     }
     SubStreamsInfo
     {
       NumUnPackStreamsInFolders[NumFolders];
       UnPackSizes[]
-      CRCs[]
+      CRCs[] (Digests)
     }
   }
   MainStreamsInfo
@@ -175,7 +175,7 @@ SignatureHeader
   ArchiveVersion
   {
     BYTE Major;   // now = 0
-    BYTE Minor;   // now = 2
+    BYTE Minor;   // now = 4
   };
 
   UINT32 StartHeaderCRC;

@@ -53,7 +53,7 @@
     <Compile Include="Common\Streams\MultiFileStream.cs" />
     <Compile Include="7zip\z7Compressor.cs" />
     <Compile Include="Common\Streams\MultiStream.cs" />
-    <Compile Include="Common\Streams\MultiStreamBase.cs" />
+    <Compile Include="Common\Streams\AbstractMultiStream.cs" />
     <Compile Include="Common\Streams\NullStream.cs" />
     <Compile Include="Common\Streams\SubStream.cs" />
     <Compile Include="Compress\Codec.cs" />

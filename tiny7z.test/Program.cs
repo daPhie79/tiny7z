@@ -52,6 +52,7 @@ namespace pdj.tiny7z
                 }
                 */
 
+                /*
                 FolderBrowserDialog fbd = new FolderBrowserDialog();
                 if (fbd.ShowDialog() == DialogResult.OK)
                 {
@@ -81,6 +82,7 @@ namespace pdj.tiny7z
                 {
                     Trace.TraceWarning("Cancelling...");
                 }
+                */
             }
             catch (Exception ex)
             {

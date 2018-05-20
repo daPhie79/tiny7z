@@ -6,7 +6,7 @@ namespace pdj.tiny7z.Common
     /// <summary>
     /// MultiFileStream - Allows treating a bunch of files sequentially to behave as if they're one stream.
     /// </summary>
-    public class MultiFileStream : MultiStreamBase
+    public class MultiFileStream : AbstractMultiStream
     {
         /// <summary>
         /// Multi-purpose container class. Holds either a file path or an already opened stream.

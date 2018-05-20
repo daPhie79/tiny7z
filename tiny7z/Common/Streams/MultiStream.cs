@@ -6,7 +6,7 @@ namespace pdj.tiny7z.Common
     /// <summary>
     /// MultiStream - Allows a multiple number of streams to be treated as one. Stream obtained (and get ownership) from delegate.
     /// </summary>
-    public class MultiStream : MultiStreamBase
+    public class MultiStream : AbstractMultiStream
     {
         protected override Stream NextStream()
         {
