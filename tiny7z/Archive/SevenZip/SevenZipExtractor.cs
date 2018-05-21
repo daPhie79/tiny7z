@@ -6,19 +6,19 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 
-namespace pdj.tiny7z
+namespace pdj.tiny7z.Archive
 {
     /// <summary>
     /// 7zip extractor class to extract files off an archive by filenames or index.
     /// </summary>
-    public class z7Extractor : Archive.IExtractor
+    public class SevenZipExtractor : IExtractor
     {
         #region Properties
-        public IReadOnlyCollection<z7ArchiveFile> Files
+        public IReadOnlyCollection<SevenZipArchiveFile> Files
         {
             get; private set;
         }
-        private z7ArchiveFile[] _Files;
+        private SevenZipArchiveFile[] _Files;
 
         public bool OverwriteExistingFiles
         {
@@ -43,11 +43,11 @@ namespace pdj.tiny7z
 
         #region Private members
         Stream stream;
-        z7Header header;
+        SevenZipHeader header;
         #endregion
 
         #region Public methods
-        public z7Extractor(Stream stream, z7Header header)
+        public SevenZipExtractor(Stream stream, SevenZipHeader header)
         {
             this.stream = stream;
             this.header = header;
@@ -61,17 +61,17 @@ namespace pdj.tiny7z
             buildFilesIndex();
         }
 
-        public Archive.IExtractor ExtractArchive(string outputDirectory)
+        public IExtractor ExtractArchive(string outputDirectory)
         {
             return ExtractFiles(new UInt64[0], outputDirectory);
         }
 
-        public Archive.IExtractor ExtractArchive(Func<Archive.ArchiveFile, Stream> onStreamRequest, Action<Archive.ArchiveFile, Stream> onStreamClose = null)
+        public IExtractor ExtractArchive(Func<ArchiveFile, Stream> onStreamRequest, Action<ArchiveFile, Stream> onStreamClose = null)
         {
             return ExtractFiles(new UInt64[0], onStreamRequest, onStreamClose);
         }
 
-        public Archive.IExtractor ExtractFile(string fileName, string outputDirectory)
+        public IExtractor ExtractFile(string fileName, string outputDirectory)
         {
             long index = findFileIndex(fileName, true);
             if (index == -1)
@@ -79,7 +79,7 @@ namespace pdj.tiny7z
             return ExtractFile((UInt64)index, outputDirectory);
         }
 
-        public Archive.IExtractor ExtractFile(string fileName, Stream outputStream)
+        public IExtractor ExtractFile(string fileName, Stream outputStream)
         {
             long index = findFileIndex(fileName, true);
             if (index == -1)
@@ -87,12 +87,12 @@ namespace pdj.tiny7z
             return ExtractFile((UInt64)index, outputStream);
         }
 
-        public Archive.IExtractor ExtractFile(UInt64 index, string outputDirectory)
+        public IExtractor ExtractFile(UInt64 index, string outputDirectory)
         {
             if (index >= (ulong)_Files.LongLength)
                 throw new ArgumentOutOfRangeException($"Index `{index}` is out of range.");
 
-            z7ArchiveFile file = _Files[index];
+            SevenZipArchiveFile file = _Files[index];
 
             if (!Directory.Exists(outputDirectory))
                 Directory.CreateDirectory(outputDirectory);
@@ -106,7 +106,7 @@ namespace pdj.tiny7z
                 {
                     Trace.TraceInformation($"Filename: `{file.Name}`, file size: `{file.Size} bytes`.");
 
-                    var sx = new z7StreamsExtractor(stream, header.RawHeader.MainStreamsInfo);
+                    var sx = new SevenZipStreamsExtractor(stream, header.RawHeader.MainStreamsInfo);
                     using (Stream fileStream = File.Create(fullPath))
                         sx.Extract((UInt64)file.UnPackIndex, fileStream);
                     if (file.Time != null)
@@ -119,7 +119,7 @@ namespace pdj.tiny7z
             return this;
         }
 
-        public Archive.IExtractor ExtractFile(UInt64 index, Stream outputStream)
+        public IExtractor ExtractFile(UInt64 index, Stream outputStream)
         {
             if (index >= (ulong)_Files.LongLength)
                 throw new ArgumentOutOfRangeException($"Index `{index}` is out of range.");
@@ -127,7 +127,7 @@ namespace pdj.tiny7z
             if (outputStream == null || !outputStream.CanWrite)
                 throw new ArgumentException($"Stream `{nameof(outputStream)}` is invalid or cannot be written to.");
 
-            z7ArchiveFile file = _Files[index];
+            SevenZipArchiveFile file = _Files[index];
 
             if (file.IsEmpty)
             {
@@ -137,14 +137,14 @@ namespace pdj.tiny7z
             {
                 Trace.TraceInformation($"Filename: `{file.Name}`, file size: `{file.Size} bytes`.");
 
-                var sx = new z7StreamsExtractor(stream, header.RawHeader.MainStreamsInfo);
+                var sx = new SevenZipStreamsExtractor(stream, header.RawHeader.MainStreamsInfo);
                 sx.Extract((UInt64)file.UnPackIndex, outputStream);
             }
 
             return this;
         }
 
-        public Archive.IExtractor ExtractFiles(string[] fileNames, string outputDirectory)
+        public IExtractor ExtractFiles(string[] fileNames, string outputDirectory)
         {
             var indices = new List<UInt64>();
             foreach (var fileName in fileNames)
@@ -160,7 +160,7 @@ namespace pdj.tiny7z
             return this;
         }
 
-        public Archive.IExtractor ExtractFiles(string[] fileNames, Func<Archive.ArchiveFile, Stream> onStreamRequest, Action<Archive.ArchiveFile, Stream> onStreamClose = null)
+        public IExtractor ExtractFiles(string[] fileNames, Func<ArchiveFile, Stream> onStreamRequest, Action<ArchiveFile, Stream> onStreamClose = null)
         {
             var indices = new List<UInt64>();
             foreach (var fileName in fileNames)
@@ -176,7 +176,7 @@ namespace pdj.tiny7z
             return this;
         }
 
-        public Archive.IExtractor ExtractFiles(UInt64[] indices, string outputDirectory)
+        public IExtractor ExtractFiles(UInt64[] indices, string outputDirectory)
         {
             if (indices.Any(index => index >= (ulong)_Files.LongLength))
                 throw new ArgumentOutOfRangeException("An index given in `indices[]` array is out of range.");
@@ -199,12 +199,12 @@ namespace pdj.tiny7z
                     streamToFileIndex[streamIndex++] = i;
             }
 
-            var sx = new z7StreamsExtractor(stream, header.RawHeader.MainStreamsInfo);
+            var sx = new SevenZipStreamsExtractor(stream, header.RawHeader.MainStreamsInfo);
             sx.ExtractMultiple(
                 streamIndices.ToArray(),
 
                 (ulong index) => {
-                    z7ArchiveFile file = _Files[streamToFileIndex[index]];
+                    SevenZipArchiveFile file = _Files[streamToFileIndex[index]];
                     string fullPath = Path.Combine(outputDirectory, PreserveDirectoryStructure ? file.Name : Path.GetFileName(file.Name));
 
                     Trace.TraceInformation($"File index {index}, filename: {file.Name}, file size: {file.Size}");
@@ -219,7 +219,7 @@ namespace pdj.tiny7z
                 },
 
                 (ulong index, Stream stream) => {
-                    z7ArchiveFile file = _Files[streamToFileIndex[index]];
+                    SevenZipArchiveFile file = _Files[streamToFileIndex[index]];
                     string fullPath = Path.Combine(outputDirectory, file.Name);
                     if (file.Time != null)
                         File.SetLastWriteTimeUtc(fullPath, (DateTime)file.Time);
@@ -228,7 +228,7 @@ namespace pdj.tiny7z
             return this;
         }
 
-        public Archive.IExtractor ExtractFiles(UInt64[] indices, Func<Archive.ArchiveFile, Stream> onStreamRequest, Action<Archive.ArchiveFile, Stream> onStreamClose = null)
+        public IExtractor ExtractFiles(UInt64[] indices, Func<ArchiveFile, Stream> onStreamRequest, Action<ArchiveFile, Stream> onStreamClose = null)
         {
             if (indices.Any(index => index >= (ulong)_Files.LongLength))
                 throw new ArgumentOutOfRangeException("An index given in `indices[]` array is out of range.");
@@ -253,7 +253,7 @@ namespace pdj.tiny7z
                     streamToFileIndex[streamIndex++] = i;
             }
 
-            var sx = new z7StreamsExtractor(stream, header.RawHeader.MainStreamsInfo);
+            var sx = new SevenZipStreamsExtractor(stream, header.RawHeader.MainStreamsInfo);
             sx.ExtractMultiple(
                 indices == null ? null : streamIndices.ToArray(),
                 (ulong index) => onStreamRequest(_Files[streamToFileIndex[index]]),
@@ -264,7 +264,7 @@ namespace pdj.tiny7z
         #endregion
 
         #region Private methods
-        bool processFile(string outputDirectory, z7ArchiveFile file)
+        bool processFile(string outputDirectory, SevenZipArchiveFile file)
         {
             string fullPath = Path.Combine(outputDirectory, PreserveDirectoryStructure ? file.Name : Path.GetFileName(file.Name));
             if (file.IsDeleted)
@@ -329,10 +329,10 @@ namespace pdj.tiny7z
             // build empty index
 
             var filesInfo = header.RawHeader.FilesInfo;
-            _Files = new z7ArchiveFile[filesInfo.NumFiles];
+            _Files = new SevenZipArchiveFile[filesInfo.NumFiles];
             for (ulong i = 0; i < filesInfo.NumFiles; ++i)
-                _Files[i] = new z7ArchiveFile();
-            Files = new ReadOnlyCollection<z7ArchiveFile>(_Files);
+                _Files[i] = new SevenZipArchiveFile();
+            Files = new ReadOnlyCollection<SevenZipArchiveFile>(_Files);
 
             // set properties that are contained in FileProperties structures
 
@@ -340,38 +340,38 @@ namespace pdj.tiny7z
             {
                 switch (properties.PropertyID)
                 {
-                    case z7Header.PropertyID.kEmptyStream:
+                    case SevenZipHeader.PropertyID.kEmptyStream:
                         for (long i = 0; i < _Files.LongLength; ++i)
                         {
-                            bool val = (properties as z7Header.PropertyEmptyStream).IsEmptyStream[i];
+                            bool val = (properties as SevenZipHeader.PropertyEmptyStream).IsEmptyStream[i];
                             _Files[i].IsEmpty = val;
                             _Files[i].IsDirectory = val;
                         }
                         break;
-                    case z7Header.PropertyID.kEmptyFile:
+                    case SevenZipHeader.PropertyID.kEmptyFile:
                         for (long i = 0, j = 0 ; i < _Files.LongLength; ++i)
                             if (_Files[i].IsEmpty)
                             {
-                                bool val = (properties as z7Header.PropertyEmptyFile).IsEmptyFile[j++];
+                                bool val = (properties as SevenZipHeader.PropertyEmptyFile).IsEmptyFile[j++];
                                 _Files[i].IsDirectory = !val;
                             }
                         break;
-                    case z7Header.PropertyID.kAnti:
+                    case SevenZipHeader.PropertyID.kAnti:
                         for (long i = 0, j = 0; i < _Files.LongLength; ++i)
                             if (_Files[i].IsEmpty)
-                                _Files[i].IsDeleted = (properties as z7Header.PropertyAnti).IsAnti[j++];
+                                _Files[i].IsDeleted = (properties as SevenZipHeader.PropertyAnti).IsAnti[j++];
                         break;
-                    case z7Header.PropertyID.kMTime:
+                    case SevenZipHeader.PropertyID.kMTime:
                         for (long i = 0; i < _Files.LongLength; ++i)
-                            _Files[i].Time = (properties as z7Header.PropertyTime).Times[i];
+                            _Files[i].Time = (properties as SevenZipHeader.PropertyTime).Times[i];
                         break;
-                    case z7Header.PropertyID.kName:
+                    case SevenZipHeader.PropertyID.kName:
                         for (long i = 0; i < _Files.LongLength; ++i)
-                            _Files[i].Name = (properties as z7Header.PropertyName).Names[i];
+                            _Files[i].Name = (properties as SevenZipHeader.PropertyName).Names[i];
                         break;
-                    case z7Header.PropertyID.kWinAttributes:
+                    case SevenZipHeader.PropertyID.kWinAttributes:
                         for (long i = 0; i < _Files.LongLength; ++i)
-                            _Files[i].Attributes = (properties as z7Header.PropertyAttributes).Attributes[i];
+                            _Files[i].Attributes = (properties as SevenZipHeader.PropertyAttributes).Attributes[i];
                         break;
                 }
             }
@@ -395,12 +395,12 @@ namespace pdj.tiny7z
             long streamIndex = 0;
             for (long i = 0; i < (long)streamsInfo.UnPackInfo.NumFolders; ++i)
             {
-                z7Header.Folder folder = streamsInfo.UnPackInfo.Folders[i];
+                SevenZipHeader.Folder folder = streamsInfo.UnPackInfo.Folders[i];
                 long ups = 1;
                 if (ssi != null && ssi.NumUnPackStreamsInFolders.Any())
                     ups = (long)ssi.NumUnPackStreamsInFolders[i];
                 if (ups == 0)
-                    throw new z7Exception("Unexpected, no UnPackStream in Folder.");
+                    throw new SevenZipException("Unexpected, no UnPackStream in Folder.");
 
                 UInt64 size = folder.GetUnPackSize();
                 UInt32? crc = folder.UnPackCRC;
@@ -409,11 +409,11 @@ namespace pdj.tiny7z
                     if (u.MoveNext())
                         size = u.Current;
                     else if (j > 0)
-                        throw new z7Exception("Unexpected, missing UnPackSize entry(ies).");
+                        throw new SevenZipException("Unexpected, missing UnPackSize entry(ies).");
 
                     while (_Files[fileIndex].IsEmpty)
                         if (++fileIndex >= _Files.LongLength)
-                            throw new z7Exception("Missing Files entries for defined sizes.");
+                            throw new SevenZipException("Missing Files entries for defined sizes.");
                     _Files[fileIndex].Size = size;
                     _Files[fileIndex].UnPackIndex = (UInt64?)streamIndex++;
                 }

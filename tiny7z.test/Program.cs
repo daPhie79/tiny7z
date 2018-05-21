@@ -31,9 +31,15 @@ namespace pdj.tiny7z
 
             // try compression
 
-            new Compress.CodecLZMA();
+            //new Compress.CodecLZMA();
             try
             {
+                string sourceFileName = Path.Combine(InternalBase, "Bioshock2HD.7z");
+                z7Archive f2 = new z7Archive(File.OpenRead(sourceFileName), FileAccess.Read);
+                var ext = f2.Extractor();
+                f2.Dump();
+                ext.ExtractArchive(Path.Combine(InternalBase, "test"));
+
                 /*
                 var ofd = new OpenFileDialog();
                 if (ofd.ShowDialog() == DialogResult.OK)

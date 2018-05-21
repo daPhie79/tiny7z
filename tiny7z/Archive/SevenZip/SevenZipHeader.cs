@@ -1,5 +1,4 @@
-﻿using pdj.tiny7z.Archive;
-using pdj.tiny7z.Common;
+﻿using pdj.tiny7z.Common;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -7,9 +6,9 @@ using System.Linq;
 using System.IO;
 using System.Text;
 
-namespace pdj.tiny7z
+namespace pdj.tiny7z.Archive
 {
-    public partial class z7Header : IHeaderParser, IHeaderWriter
+    public partial class SevenZipHeader : IHeaderParser, IHeaderWriter
     {
         /// <summary>
         /// All valid property IDs
@@ -363,7 +362,7 @@ namespace pdj.tiny7z
                     }
                 }
 
-                throw new z7Exception("Could not find final unpack size.");
+                throw new SevenZipException("Could not find final unpack size.");
             }
 
             public void Parse(Stream hs)
@@ -448,7 +447,7 @@ namespace pdj.tiny7z
                         DataStreamsIndex = hs.ReadDecodedUInt64();
                         break;
                     default:
-                        throw new z7Exception("External value must be `0` or `1`.");
+                        throw new SevenZipException("External value must be `0` or `1`.");
                 }
 
                 ExpectPropertyID(this, hs, PropertyID.kCodersUnPackSize);
@@ -479,7 +478,7 @@ namespace pdj.tiny7z
                 // end of UnPackInfo
 
                 if (propertyID != PropertyID.kEnd)
-                    throw new z7Exception("Expected kEnd property.");
+                    throw new SevenZipException("Expected kEnd property.");
             }
 
             public void Write(Stream hs)
@@ -583,7 +582,7 @@ namespace pdj.tiny7z
                     {
                         ulong num = NumUnPackStreamsInFolders[i];
                         if (num > 1)
-                            throw new z7Exception($"Invalid number of UnPackStreams `{num}` in Folder # `{i}`.");
+                            throw new SevenZipException($"Invalid number of UnPackStreams `{num}` in Folder # `{i}`.");
                         if (num == 1)
                             UnPackSizes.Add(unPackInfo.Folders[i].GetUnPackSize());
                     }
@@ -608,7 +607,7 @@ namespace pdj.tiny7z
                 }
 
                 if (propertyID != PropertyID.kEnd)
-                    throw new z7Exception("Expected `kEnd` property ID.");
+                    throw new SevenZipException("Expected `kEnd` property ID.");
             }
 
             public void Write(Stream hs)
@@ -635,7 +634,7 @@ namespace pdj.tiny7z
                         for (ulong j = 1; j < NumUnPackStreamsInFolders[i]; ++j)
                         {
                             if (!u.MoveNext())
-                                throw new z7Exception("Missing `SubStreamInfo.UnPackSize` entry.");
+                                throw new SevenZipException("Missing `SubStreamInfo.UnPackSize` entry.");
                             hs.WriteEncodedUInt64(u.Current);
                         }
                         u.MoveNext(); // skip the `unneeded` one
@@ -852,7 +851,7 @@ namespace pdj.tiny7z
                         DataIndex = hs.ReadDecodedUInt64();
                         break;
                     default:
-                        throw new z7Exception("External value must be 0 or 1.");
+                        throw new SevenZipException("External value must be 0 or 1.");
                 }
             }
 
@@ -949,7 +948,7 @@ namespace pdj.tiny7z
                         DataIndex = hs.ReadDecodedUInt64();
                         break;
                     default:
-                        throw new z7Exception("External value must be 0 or 1.");
+                        throw new SevenZipException("External value must be 0 or 1.");
                 }
             }
 
@@ -1143,7 +1142,7 @@ namespace pdj.tiny7z
         /// <summary>
         /// 7zip file header constructor
         /// </summary>
-        public z7Header(Stream headerStream, bool createNew = false)
+        public SevenZipHeader(Stream headerStream, bool createNew = false)
         {
             this.headerStream = headerStream;
             RawHeader = createNew ? new Header() : null;
@@ -1205,7 +1204,7 @@ namespace pdj.tiny7z
                     EncodedHeader.Write(headerStream);
                 }
                 else
-                    throw new z7Exception("No header to write.");
+                    throw new SevenZipException("No header to write.");
             }
             catch (Exception ex)
             {
@@ -1220,7 +1219,7 @@ namespace pdj.tiny7z
         {
             Byte propertyID = headerStream.ReadByteThrow();
             if (propertyID > (Byte)PropertyID.kDummy)
-                throw new z7Exception(parser.GetType().Name + $": Unknown property ID = {propertyID}.");
+                throw new SevenZipException(parser.GetType().Name + $": Unknown property ID = {propertyID}.");
 
             Trace.TraceInformation(parser.GetType().Name + $": Property ID = {(PropertyID)propertyID}");
             return (PropertyID)propertyID;
@@ -1232,7 +1231,7 @@ namespace pdj.tiny7z
         public static void ExpectPropertyID(IHeaderParser parser, Stream headerStream, PropertyID propertyID)
         {
             if (GetPropertyID(parser, headerStream) != propertyID)
-                throw new z7Exception(parser.GetType().Name + $": Expected property ID = {propertyID}.");
+                throw new SevenZipException(parser.GetType().Name + $": Expected property ID = {propertyID}.");
         }
     }
 }

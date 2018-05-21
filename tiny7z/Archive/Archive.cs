@@ -6,13 +6,13 @@ using System.Threading.Tasks;
 
 namespace pdj.tiny7z.Archive
 {
-    public interface Archive
+    public abstract class Archive
     {
-        bool IsValid
+        public virtual bool IsValid
         {
-            get;
+            get; protected set;
         }
-        IExtractor Extractor();
-        ICompressor Compressor();
+        public abstract IExtractor Extractor();
+        public abstract ICompressor Compressor();
     }
 }

@@ -5,9 +5,9 @@ using System.Linq;
 using System.IO;
 using System.Runtime.InteropServices;
 
-namespace pdj.tiny7z
+namespace pdj.tiny7z.Archive
 {
-    public class z7Archive : Archive.Archive
+    public class SevenZipArchive : Archive
     {
         /// <summary>
         /// 7zip file signature
@@ -62,7 +62,7 @@ namespace pdj.tiny7z
         /// <summary>
         /// Header accessor property
         /// </summary>
-        z7Header Header
+        SevenZipHeader Header
         {
             get; set;
         }
@@ -77,7 +77,7 @@ namespace pdj.tiny7z
         /// <summary>
         /// Defaut constructor
         /// </summary>
-        public z7Archive()
+        public SevenZipArchive()
         {
             stream = null;
             fileAccess = null;
@@ -88,7 +88,7 @@ namespace pdj.tiny7z
         /// <summary>
         /// Construct a 7zip file with an existing stream
         /// </summary>
-        public z7Archive(Stream stream, FileAccess fileAccess)
+        public SevenZipArchive(Stream stream, FileAccess fileAccess)
             : this()
         {
             this.stream = stream;
@@ -110,29 +110,21 @@ namespace pdj.tiny7z
         }
 
         /// <summary>
-        /// Returns true when 7zip file is either opened for reading or writing and is valid
-        /// </summary>
-        public bool IsValid
-        {
-            get; private set;
-        }
-
-        /// <summary>
         /// Returns an extractor object to retrieve files from
         /// </summary>
         /// <returns></returns>
-        public Archive.IExtractor Extractor()
+        public override IExtractor Extractor()
         {
-            return new z7Extractor(stream, Header);
+            return new SevenZipExtractor(stream, Header);
         }
 
         /// <summary>
         /// Returns a compressor object to compress files into
         /// </summary>
         /// <returns></returns>
-        public Archive.ICompressor Compressor()
+        public override ICompressor Compressor()
         {
-            return new z7Compressor(stream, Header);
+            return new SevenZipCompressor(stream, Header);
         }
 
         public void Close()
@@ -145,17 +137,19 @@ namespace pdj.tiny7z
         /// </summary>
         public void Dump()
         {
+            string json = Newtonsoft.Json.JsonConvert.SerializeObject(Header, Newtonsoft.Json.Formatting.Indented);
+            Trace.WriteLine(json);
         }
 
         /// <summary>
         /// Open an existing 7zip file for reading
         /// </summary>
-        z7Archive Open()
+        SevenZipArchive Open()
         {
             SignatureHeader sig = stream.ReadStruct<SignatureHeader>();
             if (!sig.Signature.SequenceEqual(kSignature))
             {
-                throw new z7Exception("File is not a valid 7zip file.");
+                throw new SevenZipException("File is not a valid 7zip file.");
             }
             this.signatureHeader = sig;
 
@@ -177,7 +171,7 @@ namespace pdj.tiny7z
                     uint crc32 = CRC.Calculate(sig.StartHeader.GetByteArray());
                     if (crc32 != sig.StartHeaderCRC)
                     {
-                        throw new z7Exception("StartHeaderCRC mismatch: " + crc32.ToString("X8"));
+                        throw new SevenZipException("StartHeaderCRC mismatch: " + crc32.ToString("X8"));
                     }
                 }
 
@@ -187,21 +181,21 @@ namespace pdj.tiny7z
                 stream.Seek((long)sig.StartHeader.NextHeaderOffset, SeekOrigin.Current);
                 if (stream.Read(buffer, 0, (int)sig.StartHeader.NextHeaderSize) != (int)sig.StartHeader.NextHeaderSize)
                 {
-                    throw new z7Exception("Reached end of file before end of header.");
+                    throw new SevenZipException("Reached end of file before end of header.");
                 }
 
                 {
                     uint crc32 = CRC.Calculate(buffer);
                     if (crc32 != sig.StartHeader.NextHeaderCRC)
                     {
-                        throw new z7Exception("StartHeader.NextHeaderCRC mismatch: " + crc32.ToString("X8"));
+                        throw new SevenZipException("StartHeader.NextHeaderCRC mismatch: " + crc32.ToString("X8"));
                     }
                 }
 
                 // initiate header parsing
 
                 Trace.TraceInformation("Parsing 7zip file header");
-                Header = new z7Header(new MemoryStream(buffer));
+                Header = new SevenZipHeader(new MemoryStream(buffer));
                 Header.Parse();
 
                 // decompress encoded header if found
@@ -210,12 +204,12 @@ namespace pdj.tiny7z
                 {
                     Trace.TraceInformation("Encoded header detected, decompressing.");
                     Stream newHeaderStream = new MemoryStream();
-                    (new z7StreamsExtractor(stream, Header.EncodedHeader)).Extract(0, newHeaderStream);
+                    (new SevenZipStreamsExtractor(stream, Header.EncodedHeader)).Extract(0, newHeaderStream);
 
                     Trace.TraceInformation("Parsing decompressed header.");
                     newHeaderStream.Position = 0;
-                    z7Header
-                        newHeader = new z7Header(newHeaderStream);
+                    SevenZipHeader
+                        newHeader = new SevenZipHeader(newHeaderStream);
                         newHeader.Parse();
                     Header = newHeader;
                 }
@@ -233,7 +227,7 @@ namespace pdj.tiny7z
         /// <summary>
         /// Create a new 7zip file for writing
         /// </summary>
-        z7Archive Create()
+        SevenZipArchive Create()
         {
             this.signatureHeader = new SignatureHeader()
             {
@@ -246,7 +240,7 @@ namespace pdj.tiny7z
             };
             stream.Write(this.signatureHeader.GetByteArray(), 0, Marshal.SizeOf(this.signatureHeader));
 
-            this.Header = new z7Header(null, true);
+            this.Header = new SevenZipHeader(null, true);
             return this;
         }
 

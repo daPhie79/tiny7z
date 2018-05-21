@@ -7,16 +7,16 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 
-namespace pdj.tiny7z
+namespace pdj.tiny7z.Archive
 {
-    public class z7Compressor : Archive.ICompressor
+    public class SevenZipCompressor : ICompressor
     {
         #region Properties
-        public ReadOnlyCollection<z7ArchiveFile> Files
+        public ReadOnlyCollection<SevenZipArchiveFile> Files
         {
             get; private set;
         }
-        private List<z7ArchiveFile> _Files;
+        private List<SevenZipArchiveFile> _Files;
 
         public bool Solid
         {
@@ -36,11 +36,11 @@ namespace pdj.tiny7z
 
         #region Private members
         Stream stream;
-        z7Header header;
+        SevenZipHeader header;
         #endregion
 
         #region Public methods
-        public z7Compressor(Stream stream, z7Header header)
+        public SevenZipCompressor(Stream stream, SevenZipHeader header)
         {
             this.stream = stream;
             this.header = header;
@@ -51,13 +51,13 @@ namespace pdj.tiny7z
             if (header == null)
                 throw new ArgumentNullException("Header has not been prepared properly.");
 
-            _Files = new List<z7ArchiveFile>();
-            Files = new ReadOnlyCollection<z7ArchiveFile>(_Files);
+            _Files = new List<SevenZipArchiveFile>();
+            Files = new ReadOnlyCollection<SevenZipArchiveFile>(_Files);
             Solid = true;
             CompressHeader = true;
         }
 
-        public Archive.ICompressor AddDirectory(string inputDirectory, string archiveDirectory = null, bool recursive = true)
+        public ICompressor AddDirectory(string inputDirectory, string archiveDirectory = null, bool recursive = true)
         {
             Trace.TraceInformation($"Adding files from directory `{inputDirectory}`.");
             Trace.Indent();
@@ -71,13 +71,13 @@ namespace pdj.tiny7z
                 if (archiveDirectory != string.Empty)
                     archiveDirectory = archiveDirectory.Replace('\\', '/').Trim('/') + '/';
 
-                List<z7ArchiveFile> addedFiles = new List<z7ArchiveFile>();
+                List<SevenZipArchiveFile> addedFiles = new List<SevenZipArchiveFile>();
                 if (PreserveDirectoryStructure && recursive)
                 {
                     foreach (var dir in new DirectoryInfo(inputDirectory).EnumerateDirectories("*.*", SearchOption.AllDirectories))
                     {
                         Trace.TraceInformation("Adding: " + dir.FullName);
-                        addedFiles.Add(new z7ArchiveFile()
+                        addedFiles.Add(new SevenZipArchiveFile()
                         {
                             Name = archiveDirectory + dir.FullName.Substring(inputDirectory.Length),
                             Size = 0,
@@ -93,7 +93,7 @@ namespace pdj.tiny7z
                 foreach (var file in new DirectoryInfo(inputDirectory).EnumerateFiles("*.*", recursive ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly))
                 {
                     Trace.TraceInformation("Adding: " + file);
-                    addedFiles.Add(new z7ArchiveFile()
+                    addedFiles.Add(new SevenZipArchiveFile()
                     {
                         Name = archiveDirectory + (PreserveDirectoryStructure ? file.FullName.Substring(inputDirectory.Length) : Path.GetFileName(file.FullName)),
                         Size = (UInt64)file.Length,
@@ -116,7 +116,7 @@ namespace pdj.tiny7z
             return this;
         }
 
-        public Archive.ICompressor AddFile(string inputFileName, string archiveFileName = null)
+        public ICompressor AddFile(string inputFileName, string archiveFileName = null)
         {
             Trace.TraceInformation($"Adding file `{inputFileName}`.");
             if (!File.Exists(inputFileName))
@@ -126,7 +126,7 @@ namespace pdj.tiny7z
             archiveFileName = archiveFileName.Substring(Path.GetPathRoot(archiveFileName).Length).Replace('\\', '/');
 
             var fileInfo = new FileInfo(inputFileName);
-            _Files.Add(new z7ArchiveFile()
+            _Files.Add(new SevenZipArchiveFile()
             {
                 Name = archiveFileName,
                 Size = (UInt64)fileInfo.Length,
@@ -141,12 +141,12 @@ namespace pdj.tiny7z
             return this;
         }
 
-        public Archive.ICompressor AddFile(Stream stream, string archiveFileName, DateTime? time = null)
+        public ICompressor AddFile(Stream stream, string archiveFileName, DateTime? time = null)
         {
             Trace.TraceInformation($"Adding file `{archiveFileName}` from stream.");
             archiveFileName = archiveFileName.Substring(Path.GetPathRoot(archiveFileName).Length).Replace('\\', '/');
 
-            _Files.Add(new z7ArchiveFile()
+            _Files.Add(new SevenZipArchiveFile()
             {
                 Name = archiveFileName,
                 Size = (UInt64)stream.Length,
@@ -161,7 +161,7 @@ namespace pdj.tiny7z
             return this;
         }
 
-        public Archive.ICompressor Finalize()
+        public ICompressor Finalize()
         {
             Trace.TraceInformation($"Compressing files.");
             Trace.Indent();
@@ -182,7 +182,7 @@ namespace pdj.tiny7z
                 }
 
                 // compress files
-                this.header.RawHeader.MainStreamsInfo = new z7Header.StreamsInfo();
+                this.header.RawHeader.MainStreamsInfo = new SevenZipHeader.StreamsInfo();
                 if (Solid && streamIndex > 1)
                 {
                     compressFilesSolid(streamIndex, streamToFileIndex);
@@ -209,7 +209,7 @@ namespace pdj.tiny7z
         void compressFilesSolid(ulong numStreams, Dictionary<ulong, ulong> streamToFileIndex)
         {
             var sc = new z7StreamsCompressor(stream);
-            sc.Codec = Compress.Codec.Query(new Compress.CodecID(0x03, 0x01, 0x01));
+            // sc.Codec = Compress.Codec.Query(new Compress.CodecID(0x03, 0x01, 0x01));
 
             Trace.TraceInformation($"Compressing `{numStreams} files` into a solid block...");
 
@@ -221,26 +221,26 @@ namespace pdj.tiny7z
 
             // build headers
             var streamsInfo = this.header.RawHeader.MainStreamsInfo;
-            streamsInfo.PackInfo = new z7Header.PackInfo()
+            streamsInfo.PackInfo = new SevenZipHeader.PackInfo()
             {
                 NumPackStreams = cs.NumStreams,
                 PackPos = 0,
                 Sizes = cs.Sizes,
-                Digests = new z7Header.Digests(cs.NumStreams)
+                Digests = new SevenZipHeader.Digests(cs.NumStreams)
                 {
                     CRCs = cs.CRCs
                 }
             };
-            streamsInfo.UnPackInfo = new z7Header.UnPackInfo()
+            streamsInfo.UnPackInfo = new SevenZipHeader.UnPackInfo()
             {
                 NumFolders = 1,
-                Folders = new z7Header.Folder[1]
+                Folders = new SevenZipHeader.Folder[1]
                 {
                     cs.Folder
                 }
             };
             streamsInfo.UnPackInfo.Folders[0].UnPackCRC = null;
-            streamsInfo.SubStreamsInfo = new z7Header.SubStreamsInfo(streamsInfo.UnPackInfo)
+            streamsInfo.SubStreamsInfo = new SevenZipHeader.SubStreamsInfo(streamsInfo.UnPackInfo)
             {
                 NumUnPackStreamsInFolders = new UInt64[1]
                 {
@@ -248,7 +248,7 @@ namespace pdj.tiny7z
                 },
                 NumUnPackStreamsTotal = numStreams,
                 UnPackSizes = new List<UInt64>((int)numStreams),
-                Digests = new z7Header.Digests(numStreams)
+                Digests = new SevenZipHeader.Digests(numStreams)
             };
             for (ulong i = 0; i < numStreams; ++i)
             {
@@ -267,7 +267,7 @@ namespace pdj.tiny7z
             ulong numPackStreams = 0;
             for (ulong i = 0; i < numStreams; ++i)
             {
-                z7ArchiveFile file = _Files[(int)streamToFileIndex[i]];
+                SevenZipArchiveFile file = _Files[(int)streamToFileIndex[i]];
 
                 Trace.TraceInformation($"Compressing `{file.Name}`, Size: `{file.Size} bytes`...");
                 using (Stream source = file.Source.Get(FileAccess.Read))
@@ -278,17 +278,17 @@ namespace pdj.tiny7z
 
             // build headers
             var streamsInfo = this.header.RawHeader.MainStreamsInfo;
-            streamsInfo.PackInfo = new z7Header.PackInfo()
+            streamsInfo.PackInfo = new SevenZipHeader.PackInfo()
             {
                 NumPackStreams = numPackStreams,
                 PackPos = 0,
                 Sizes = new UInt64[numPackStreams],
-                Digests = new z7Header.Digests(numPackStreams)
+                Digests = new SevenZipHeader.Digests(numPackStreams)
             };
-            streamsInfo.UnPackInfo = new z7Header.UnPackInfo()
+            streamsInfo.UnPackInfo = new SevenZipHeader.UnPackInfo()
             {
                 NumFolders = numStreams,
-                Folders = new z7Header.Folder[numStreams]
+                Folders = new SevenZipHeader.Folder[numStreams]
             };
             for (ulong i = 0, k = 0; i < numStreams; ++i)
             {
@@ -322,21 +322,21 @@ namespace pdj.tiny7z
                 z7StreamsCompressor.PackedStream cs = sc.Compress(headerStream);
 
                 // create encoded header
-                z7Header.StreamsInfo headerStreamsInfo = new z7Header.StreamsInfo()
+                SevenZipHeader.StreamsInfo headerStreamsInfo = new SevenZipHeader.StreamsInfo()
                 {
-                    PackInfo = new z7Header.PackInfo()
+                    PackInfo = new SevenZipHeader.PackInfo()
                     {
                         NumPackStreams = cs.NumStreams,
-                        PackPos = (UInt64)(endOfPackedStreamsPosition - Marshal.SizeOf(typeof(z7Archive.SignatureHeader))),
+                        PackPos = (UInt64)(endOfPackedStreamsPosition - Marshal.SizeOf(typeof(SevenZipArchive.SignatureHeader))),
                         Sizes = cs.Sizes,
-                        Digests = new z7Header.Digests(1)
+                        Digests = new SevenZipHeader.Digests(1)
                         {
                             CRCs = cs.CRCs
                         }
                     },
-                    UnPackInfo = new z7Header.UnPackInfo()
+                    UnPackInfo = new SevenZipHeader.UnPackInfo()
                     {
-                        Folders = new z7Header.Folder[1] { cs.Folder },
+                        Folders = new SevenZipHeader.Folder[1] { cs.Folder },
                         NumFolders = 1
                     }
                 };
@@ -356,9 +356,9 @@ namespace pdj.tiny7z
 
             // create start header and calculate header crc
             headerStream.Position = 0;
-            var startHeader = new z7Archive.StartHeader()
+            var startHeader = new SevenZipArchive.StartHeader()
             {
-                NextHeaderOffset = (UInt64)(endOfPackedStreamsPosition - Marshal.SizeOf(typeof(z7Archive.SignatureHeader))),
+                NextHeaderOffset = (UInt64)(endOfPackedStreamsPosition - Marshal.SizeOf(typeof(SevenZipArchive.SignatureHeader))),
                 NextHeaderSize = (UInt64)headerStream.Length,
                 NextHeaderCRC = CRC.Calculate(headerStream)
             };
@@ -368,10 +368,10 @@ namespace pdj.tiny7z
             headerStream.CopyTo(stream);
 
             // regenerate signature header with positions and crcs
-            var signatureHeader = new z7Archive.SignatureHeader()
+            var signatureHeader = new SevenZipArchive.SignatureHeader()
             {
-                Signature = z7Archive.kSignature.ToArray(),
-                ArchiveVersion = new z7Archive.ArchiveVersion()
+                Signature = SevenZipArchive.kSignature.ToArray(),
+                ArchiveVersion = new SevenZipArchive.ArchiveVersion()
                 {
                     Major = 0,
                     Minor = 2,
@@ -414,24 +414,24 @@ namespace pdj.tiny7z
 
             // add properties to file property headers
 
-            var propertyEmptyStream = new z7Header.PropertyEmptyStream((ulong)_Files.LongCount())
+            var propertyEmptyStream = new SevenZipHeader.PropertyEmptyStream((ulong)_Files.LongCount())
             {
                 IsEmptyStream = emptyStreams,
                 NumEmptyStreams = numEmptyStreams
             };
-            var propertyEmptyFile = new z7Header.PropertyEmptyFile((ulong)_Files.LongCount(), numEmptyStreams)
+            var propertyEmptyFile = new SevenZipHeader.PropertyEmptyFile((ulong)_Files.LongCount(), numEmptyStreams)
             {
                 IsEmptyFile = emptyFiles
             };
-            var propertyName = new z7Header.PropertyName((ulong)_Files.LongCount())
+            var propertyName = new SevenZipHeader.PropertyName((ulong)_Files.LongCount())
             {
                 Names = new string[_Files.LongCount()]
             };
-            var propertyTime = new z7Header.PropertyTime(z7Header.PropertyID.kMTime, (ulong)_Files.LongCount())
+            var propertyTime = new SevenZipHeader.PropertyTime(SevenZipHeader.PropertyID.kMTime, (ulong)_Files.LongCount())
             {
                 Times = new DateTime?[_Files.LongCount()]
             };
-            var propertyAttr = new z7Header.PropertyAttributes((ulong)_Files.LongCount())
+            var propertyAttr = new SevenZipHeader.PropertyAttributes((ulong)_Files.LongCount())
             {
                 Attributes = new UInt32?[_Files.LongCount()]
             };
@@ -445,7 +445,7 @@ namespace pdj.tiny7z
             // create header and add FilesInfo elements
 
             var header = this.header.RawHeader;
-            header.FilesInfo = new z7Header.FilesInfo()
+            header.FilesInfo = new SevenZipHeader.FilesInfo()
             {
                 NumFiles = (ulong)_Files.LongCount(),
                 NumEmptyStreams = numEmptyStreams
@@ -454,7 +454,7 @@ namespace pdj.tiny7z
                 header.FilesInfo.Properties.Add(propertyEmptyStream);
             if (numEmptyFiles > 0)
                 header.FilesInfo.Properties.Add(propertyEmptyFile);
-            header.FilesInfo.Properties.AddRange(new z7Header.FileProperty[] { propertyName, propertyTime, propertyAttr });
+            header.FilesInfo.Properties.AddRange(new SevenZipHeader.FileProperty[] { propertyName, propertyTime, propertyAttr });
         }
         #endregion
     }

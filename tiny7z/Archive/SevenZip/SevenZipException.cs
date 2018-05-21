@@ -1,13 +1,13 @@
 ﻿using System;
 
-namespace pdj.tiny7z
+namespace pdj.tiny7z.Archive
 {
     /// <summary>
     /// Base exception class for error handling
     /// </summary>
-    public class z7Exception : Exception
+    public class SevenZipException : Exception
     {
-        public z7Exception(string message)
+        public SevenZipException(string message)
             : base(message)
         {
         }

@@ -1,10 +1,10 @@
 ﻿using pdj.tiny7z.Common;
-using pdj.tiny7z.Compress;
+using pdj.tiny7z.Compression;
 using System;
 using System.IO;
 using System.Linq;
 
-namespace pdj.tiny7z
+namespace pdj.tiny7z.Archive
 {
     class z7StreamsCompressor
     {
@@ -13,7 +13,7 @@ namespace pdj.tiny7z
             public UInt64 NumStreams;
             public UInt64[] Sizes;
             public UInt32?[] CRCs;
-            public z7Header.Folder Folder;
+            public SevenZipHeader.Folder Folder;
         }
 
         public Codec Codec
@@ -37,12 +37,12 @@ namespace pdj.tiny7z
                 NumStreams = 1,
                 Sizes = new UInt64[1] { 0 },
                 CRCs = new UInt32?[1] { null },
-                Folder = new z7Header.Folder()
+                Folder = new SevenZipHeader.Folder()
                 {
                     NumCoders = 1,
-                    CodersInfo = new z7Header.CoderInfo[1]
+                    CodersInfo = new SevenZipHeader.CoderInfo[1]
                     {
-                        new z7Header.CoderInfo()
+                        new SevenZipHeader.CoderInfo()
                         {
                             Attributes = (Byte)Codec.ID.Size,
                             CodecId = Codec.ID.Raw.ToArray(),
@@ -66,7 +66,7 @@ namespace pdj.tiny7z
                 {
                     (encoder as IWriteCoderProperties).WriteCoderProperties(propsStream);
 
-                    ps.Folder.CodersInfo[0].Attributes |= (Byte)z7Header.CoderInfo.AttrHasAttributes;
+                    ps.Folder.CodersInfo[0].Attributes |= (Byte)SevenZipHeader.CoderInfo.AttrHasAttributes;
                     ps.Folder.CodersInfo[0].Properties = propsStream.ToArray();
                     ps.Folder.CodersInfo[0].PropertiesSize = (UInt64)ps.Folder.CodersInfo[0].Properties.Length;
                 }

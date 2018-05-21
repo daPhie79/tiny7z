@@ -1,15 +1,13 @@
-﻿using pdj.tiny7z.Archive;
-using pdj.tiny7z.Common;
+﻿using pdj.tiny7z.Common;
 using System;
 
-
-namespace pdj.tiny7z
+namespace pdj.tiny7z.Archive
 {
-    public class z7ArchiveFile : ArchiveFile
+    public class SevenZipArchiveFile : ArchiveFile
     {
         public UInt64? UnPackIndex;
         public MultiFileStream.Source Source;
-        public z7ArchiveFile()
+        public SevenZipArchiveFile()
             : base()
         {
             this.UnPackIndex = null;

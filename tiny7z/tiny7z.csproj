@@ -37,6 +37,9 @@
     <StartupObject />
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Newtonsoft.Json, Version=11.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>..\packages\Newtonsoft.Json.11.0.2\lib\net45\Newtonsoft.Json.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
@@ -49,43 +52,77 @@
   <ItemGroup>
     <Compile Include="Archive\Archive.cs" />
     <Compile Include="Archive\ArchiveFile.cs" />
+    <Compile Include="Common\StreamExtensions.cs" />
     <Compile Include="Common\Streams\CRCStream.cs" />
     <Compile Include="Common\Streams\MultiFileStream.cs" />
-    <Compile Include="7zip\z7Compressor.cs" />
+    <Compile Include="Archive\SevenZip\SevenZipCompressor.cs" />
     <Compile Include="Common\Streams\MultiStream.cs" />
     <Compile Include="Common\Streams\AbstractMultiStream.cs" />
     <Compile Include="Common\Streams\NullStream.cs" />
     <Compile Include="Common\Streams\SubStream.cs" />
-    <Compile Include="Compress\Codec.cs" />
-    <Compile Include="Compress\CodecID.cs" />
-    <Compile Include="Compress\LZMA\CodecLZMA.cs" />
-    <Compile Include="Compress\LZMA\LZMA\LzmaBase.cs" />
-    <Compile Include="Compress\LZMA\LZMA\LzmaDecoder.cs" />
-    <Compile Include="Compress\LZMA\LZMA\LzmaEncoder.cs" />
-    <Compile Include="Compress\LZMA\LZ\IMatchFinder.cs" />
-    <Compile Include="Compress\LZMA\LZ\LzBinTree.cs" />
-    <Compile Include="Compress\LZMA\LZ\LzInWindow.cs" />
-    <Compile Include="Compress\LZMA\LZ\LzOutWindow.cs" />
-    <Compile Include="Compress\LZMA\RangeCoder\RangeCoder.cs" />
-    <Compile Include="Compress\LZMA\RangeCoder\RangeCoderBit.cs" />
-    <Compile Include="Compress\LZMA\RangeCoder\RangeCoderBitTree.cs" />
-    <Compile Include="Compress\ICoder.cs" />
+    <None Include="LICENSE" />
+    <None Include="_Legacy\Compress\Codec.cs" />
+    <Compile Include="Compression\IPasswordProvider.cs" />
+    <None Include="_Legacy\Compress\LZMA\CodecLZMA.cs" />
+    <None Include="_Legacy\Compress\LZMA\LZMA\LzmaBase.cs" />
+    <None Include="_Legacy\Compress\LZMA\LZMA\LzmaDecoder.cs" />
+    <None Include="_Legacy\Compress\LZMA\LZMA\LzmaEncoder.cs" />
+    <None Include="_Legacy\Compress\LZMA\LZ\IMatchFinder.cs" />
+    <None Include="_Legacy\Compress\LZMA\LZ\LzBinTree.cs" />
+    <None Include="_Legacy\Compress\LZMA\LZ\LzInWindow.cs" />
+    <None Include="_Legacy\Compress\LZMA\LZ\LzOutWindow.cs" />
+    <None Include="_Legacy\Compress\LZMA\RangeCoder\RangeCoder.cs" />
+    <None Include="_Legacy\Compress\LZMA\RangeCoder\RangeCoderBit.cs" />
+    <None Include="_Legacy\Compress\LZMA\RangeCoder\RangeCoderBitTree.cs" />
+    <None Include="_Legacy\Compress\LZMA\ICoder.cs" />
     <Compile Include="Common\CRC.cs" />
     <Compile Include="Common\Extensions.cs" />
-    <Compile Include="7zip\z7ArchiveFile.cs" />
-    <Compile Include="7zip\z7Exception.cs" />
-    <Compile Include="7zip\z7Extractor.cs" />
-    <Compile Include="7zip\z7Archive.cs" />
+    <Compile Include="Archive\SevenZip\SevenZipArchiveFile.cs" />
+    <Compile Include="Archive\SevenZip\SevenZipException.cs" />
+    <Compile Include="Archive\SevenZip\SevenZipExtractor.cs" />
+    <Compile Include="Archive\SevenZip\SevenZipArchive.cs" />
+    <Compile Include="Compression\CompressionMode.cs" />
+    <Compile Include="Compression\BCJ\BcjFilter.cs" />
+    <Compile Include="Compression\BCJ\AbstractFilter.cs" />
+    <Compile Include="Compression\AES\AesDecoderStream.cs" />
+    <Compile Include="Compression\BCJ2\Bcj2DecoderStream.cs" />
+    <Compile Include="Compression\DecoderStream.cs" />
+    <Compile Include="Compression\LZMA\ICoder.cs" />
+    <Compile Include="Compression\LZMA\LzmaBase.cs" />
+    <Compile Include="Compression\LZMA\LzmaDecoder.cs" />
+    <Compile Include="Compression\LZMA\LzmaEncoder.cs" />
+    <Compile Include="Compression\LZMA\LzmaEncoderProperties.cs" />
+    <Compile Include="Compression\LZMA\LzmaStream.cs" />
+    <Compile Include="Compression\LZMA\LZ\LzBinTree.cs" />
+    <Compile Include="Compression\LZMA\LZ\LzInWindow.cs" />
+    <Compile Include="Compression\LZMA\LZ\LzOutWindow.cs" />
+    <Compile Include="Compression\LZMA\RangeCoder\RangeCoder.cs" />
+    <Compile Include="Compression\LZMA\RangeCoder\RangeCoderBit.cs" />
+    <Compile Include="Compression\LZMA\RangeCoder\RangeCoderBitTree.cs" />
+    <Compile Include="Compression\Registry.cs" />
+    <Compile Include="Compression\PPMd\I1\Allocator.cs" />
+    <Compile Include="Compression\PPMd\I1\Coder.cs" />
+    <Compile Include="Compression\PPMd\I1\MemoryNode.cs" />
+    <Compile Include="Compression\PPMd\I1\Model.cs" />
+    <Compile Include="Compression\PPMd\I1\ModelRestorationMethod.cs" />
+    <Compile Include="Compression\PPMd\I1\Pointer.cs" />
+    <Compile Include="Compression\PPMd\I1\PpmContext.cs" />
+    <Compile Include="Compression\PPMd\I1\PpmState.cs" />
+    <Compile Include="Compression\PPMd\I1\See2Context.cs" />
+    <Compile Include="Compression\PPMd\PpmdProperties.cs" />
+    <Compile Include="Compression\PPMd\PpmdStream.cs" />
+    <Compile Include="Compression\PPMd\PpmdVersion.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="7zip\z7StreamsCompressor.cs" />
-    <Compile Include="7zip\z7StreamsExtractor.cs" />
-    <Compile Include="7zip\z7Header.cs" />
+    <Compile Include="Archive\SevenZip\SevenZipStreamsCompressor.cs" />
+    <Compile Include="Archive\SevenZip\SevenZipStreamsExtractor.cs" />
+    <Compile Include="Archive\SevenZip\SevenZipHeader.cs" />
     <Compile Include="Archive\Interfaces.cs" />
-    <Compile Include="7zip\z7Methods.cs" />
+    <Compile Include="Archive\SevenZip\SevenZipMethods.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
     <None Include="Doc\Understanding7z.pdf" />
+    <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="Doc\7zFormat.txt" />

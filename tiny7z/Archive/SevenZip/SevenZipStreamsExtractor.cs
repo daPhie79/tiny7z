@@ -1,19 +1,19 @@
 ﻿using pdj.tiny7z.Common;
-using pdj.tiny7z.Compress;
+using pdj.tiny7z.Compression;
 using System;
 using System.Diagnostics;
 using System.Linq;
 using System.IO;
 using System.Runtime.InteropServices;
 
-namespace pdj.tiny7z
+namespace pdj.tiny7z.Archive
 {
-    class z7StreamsExtractor
+    class SevenZipStreamsExtractor
     {
         Stream stream;
-        z7Header.StreamsInfo streamsInfo;
+        SevenZipHeader.StreamsInfo streamsInfo;
 
-        public z7StreamsExtractor(Stream stream, z7Header.StreamsInfo streamsInfo)
+        public SevenZipStreamsExtractor(Stream stream, SevenZipHeader.StreamsInfo streamsInfo)
         {
             this.stream = stream;
             this.streamsInfo = streamsInfo;
@@ -65,7 +65,7 @@ namespace pdj.tiny7z
         private void extractMultipleFromFolder(ulong outputStreamIndexOffset, bool[] matches, ulong folderIndex, ulong packIndex, Func<ulong, Stream> onStreamRequest, Action<ulong, Stream> onStreamClose)
         {
             // ensure compatible coders
-            z7Header.Folder folder = streamsInfo.UnPackInfo.Folders[folderIndex];
+            SevenZipHeader.Folder folder = streamsInfo.UnPackInfo.Folders[folderIndex];
             if (folder.NumCoders > 1)
             {
                 Trace.TraceWarning("7zip: Only one coder per folder is supported for now.");
@@ -77,13 +77,13 @@ namespace pdj.tiny7z
             Codec codec = Codec.Query(codecID);
             if (codec == null)
             {
-                string codecName = z7Methods.Codecs.Where(id => id.Key == codecID).Select(id => id.Value).FirstOrDefault();
+                string codecName = SevenZipMethods.List.Where(id => id.Key == codecID).Select(id => id.Value).FirstOrDefault();
                 Trace.TraceWarning("7zip: Codec `" + (codecName ?? "unknown") + "` not supported.");
                 return;
             }
 
             // find initial position of packed streams
-            ulong packPos = streamsInfo.PackInfo.PackPos + (ulong)Marshal.SizeOf(typeof(z7Archive.SignatureHeader));
+            ulong packPos = streamsInfo.PackInfo.PackPos + (ulong)Marshal.SizeOf(typeof(SevenZipArchive.SignatureHeader));
             ulong[] packedIndices = folder.PackedIndices ?? new ulong[] { 0 };
             for (ulong i = 0; i < packIndex + packedIndices[0]; ++i)
                 packPos += streamsInfo.PackInfo.Sizes[i];
