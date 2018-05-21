@@ -260,7 +260,6 @@ namespace pdj.tiny7z.Archive
         void compressFilesNonSolid(ulong numStreams, Dictionary<ulong, ulong> streamToFileIndex)
         {
             var sc = new z7StreamsCompressor(stream);
-            sc.Codec = Compress.Codec.Query(new Compress.CodecID(0x03, 0x01, 0x01));
 
             // actual compression (into a single packed stream per file)
             z7StreamsCompressor.PackedStream[] css = new z7StreamsCompressor.PackedStream[numStreams];
@@ -315,7 +314,6 @@ namespace pdj.tiny7z.Archive
             {
                 // get compressor and default codec
                 var sc = new z7StreamsCompressor(stream);
-                sc.Codec = Compress.Codec.Query(new Compress.CodecID(0x03, 0x01, 0x01));
 
                 // compress
                 headerStream.Position = 0;

@@ -7,6 +7,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using pdj.tiny7z.Archive;
 
 namespace pdj.tiny7z
 {
@@ -31,14 +32,21 @@ namespace pdj.tiny7z
 
             // try compression
 
-            //new Compress.CodecLZMA();
             try
             {
-                string sourceFileName = Path.Combine(InternalBase, "Bioshock2HD.7z");
-                z7Archive f2 = new z7Archive(File.OpenRead(sourceFileName), FileAccess.Read);
+                if (Directory.Exists(Path.Combine(InternalBase, "test")))
+                    Directory.Delete(Path.Combine(InternalBase, "test"), true);
+                System.Threading.Thread.Sleep(10);
+                Directory.CreateDirectory(Path.Combine(InternalBase, "test"));
+
+                /*
+                string sourceFileName = Path.Combine(InternalBase, "OutputTest.7z");
+                SevenZipArchive f2 = new SevenZipArchive(File.OpenRead(sourceFileName), FileAccess.Read);
                 var ext = f2.Extractor();
                 f2.Dump();
+                ext.OverwriteExistingFiles = true;
                 ext.ExtractArchive(Path.Combine(InternalBase, "test"));
+                */
 
                 /*
                 var ofd = new OpenFileDialog();
@@ -58,7 +66,6 @@ namespace pdj.tiny7z
                 }
                 */
 
-                /*
                 FolderBrowserDialog fbd = new FolderBrowserDialog();
                 if (fbd.ShowDialog() == DialogResult.OK)
                 {
@@ -66,29 +73,29 @@ namespace pdj.tiny7z
                         throw new ApplicationException("Path not found.");
 
                     string destFileName = Path.Combine(InternalBase, "OutputTest.7z");
-                    z7Archive f = new z7Archive(File.Create(destFileName), FileAccess.Write);
+                    SevenZipArchive f = new SevenZipArchive(File.Create(destFileName), FileAccess.Write);
                     var cmp = f.Compressor();
-                    (cmp as z7Compressor).Solid = true;
-                    (cmp as z7Compressor).CompressHeader = true;
+                    (cmp as SevenZipCompressor).Solid = true;
+                    (cmp as SevenZipCompressor).CompressHeader = false;
 
                     cmp.AddDirectory(fbd.SelectedPath);
                     cmp.Finalize();
                     f.Dump();
                     f.Close();
-
-                    // try decompression
-
-                    string sourceFileName = Path.Combine(InternalBase, "OutputTest.7z");
-                    z7Archive f2 = new z7Archive(File.OpenRead(sourceFileName), FileAccess.Read);
-                    var ext = f2.Extractor();
-                    f2.Dump();
-                    ext.ExtractArchive(Path.Combine(InternalBase, "test"));
                 }
                 else
                 {
                     Trace.TraceWarning("Cancelling...");
                 }
-                */
+
+                // try decompression
+
+                string sourceFileName = Path.Combine(InternalBase, "OutputTest.7z");
+                SevenZipArchive f2 = new SevenZipArchive(File.OpenRead(sourceFileName), FileAccess.Read);
+                f2.Dump();
+                var ext = f2.Extractor();
+                ext.OverwriteExistingFiles = true;
+                ext.ExtractArchive(Path.Combine(InternalBase, "test"));
             }
             catch (Exception ex)
             {

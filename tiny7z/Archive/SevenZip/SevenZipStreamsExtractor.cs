@@ -73,11 +73,10 @@ namespace pdj.tiny7z.Archive
             }
 
             // find codec
-            CodecID codecID = new CodecID(folder.CodersInfo[0].CodecId);
-            Codec codec = Codec.Query(codecID);
-            if (codec == null)
+            var methodID = new SevenZipMethods.MethodID(folder.CodersInfo[0].CodecId);
+            if (!SevenZipMethods.Supported.ContainsKey(methodID))
             {
-                string codecName = SevenZipMethods.List.Where(id => id.Key == codecID).Select(id => id.Value).FirstOrDefault();
+                string codecName = SevenZipMethods.List.Where(id => id.Key == methodID).Select(id => id.Value).FirstOrDefault();
                 Trace.TraceWarning("7zip: Codec `" + (codecName ?? "unknown") + "` not supported.");
                 return;
             }
@@ -94,58 +93,56 @@ namespace pdj.tiny7z.Archive
             ulong outSize = folder.GetUnPackSize();
 
             // set decompressor
-            codec.SetDecoderProperties(folder.CodersInfo[0].Properties);
-            ICoder decoder = codec.GetDecompressor();
-
-            // define output stream
-            Stream outStream;
-            if (matches == null)
+            using (var decoder = Compression.Registry.GetDecoderStream(SevenZipMethods.Supported[methodID], new Stream[] { stream }, folder.CodersInfo[0].Properties, null, (long)inSize, (long)outSize))
             {
-                outStream = onStreamRequest(outputStreamIndexOffset);
-            }
-            else
-            {
-                ulong numStreams = streamsInfo.SubStreamsInfo.NumUnPackStreamsInFolders[folderIndex];
+                // define output stream
+                Stream outStream;
+                if (matches == null)
+                {
+                    outStream = onStreamRequest(outputStreamIndexOffset);
+                }
+                else
+                {
+                    ulong numStreams = streamsInfo.SubStreamsInfo.NumUnPackStreamsInFolders[folderIndex];
 
-                // create complex multistream
-                MultiStream multi = new MultiStream(numStreams,
-                    (ulong innerIndex) =>
-                    {
-                        Stream innerStream = null;
-                        if (matches[innerIndex])
+                    // create complex multistream
+                    MultiStream multi = new MultiStream(numStreams,
+                        (ulong innerIndex) =>
                         {
-                            innerStream = onStreamRequest(outputStreamIndexOffset + innerIndex);
-                            if (innerStream == null)
-                                matches[innerIndex] = false;
-                        }
+                            Stream innerStream = null;
+                            if (matches[innerIndex])
+                            {
+                                innerStream = onStreamRequest(outputStreamIndexOffset + innerIndex);
+                                if (innerStream == null)
+                                    matches[innerIndex] = false;
+                            }
 
-                        return innerStream ??
-                            new NullStream((long)streamsInfo.SubStreamsInfo.UnPackSizes[(int)(outputStreamIndexOffset + innerIndex)]);
-                    },
-                    (ulong innerIndex, Stream stream) =>
-                    {
-                        if (matches[innerIndex])
-                            onStreamClose(outputStreamIndexOffset + innerIndex, stream);
-                    });
+                            return innerStream ??
+                                new NullStream((long)streamsInfo.SubStreamsInfo.UnPackSizes[(int)(outputStreamIndexOffset + innerIndex)]);
+                        },
+                        (ulong innerIndex, Stream stream) =>
+                        {
+                            if (matches[innerIndex])
+                                onStreamClose(outputStreamIndexOffset + innerIndex, stream);
+                        });
 
-                // set sizes in multistream
-                for (ulong i = 0; i < numStreams; ++i)
-                    multi.Sizes[i] = (long)streamsInfo.SubStreamsInfo.UnPackSizes[(int)(outputStreamIndexOffset + i)];
+                    // set sizes in multistream
+                    for (ulong i = 0; i < numStreams; ++i)
+                        multi.Sizes[i] = (long)streamsInfo.SubStreamsInfo.UnPackSizes[(int)(outputStreamIndexOffset + i)];
 
-                // set new stream as output stream
-                outStream = multi;
+                    // set new stream as output stream
+                    outStream = multi;
+                }
+
+                // actual extraction is done here
+                Util.TransferTo(decoder, outStream);
+
+                // call stream close delegate if only one stream and delegate present
+                if (matches == null)
+                {
+                    onStreamClose?.Invoke(outputStreamIndexOffset, outStream);
+                }
             }
-
-            // actual extraction is done here
-            decoder.Code(stream, outStream, (long)inSize, (long)outSize, null);
-
-            // call stream close delegate if only one stream and delegate present
-            if (matches == null)
-            {
-                onStreamClose?.Invoke(outputStreamIndexOffset, outStream);
-            }
-
         }
-
     }
 }

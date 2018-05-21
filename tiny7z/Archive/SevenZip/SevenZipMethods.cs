@@ -76,11 +76,14 @@ namespace pdj.tiny7z.Archive
         }
 
         public static readonly Dictionary<MethodID, string> List;
+        public static readonly Dictionary<MethodID, Compression.Registry.Method> Supported;
+        public static readonly Dictionary<Compression.Registry.Method, MethodID> Lookup;
+
         static SevenZipMethods()
         {
             try
             {
-                List = new Dictionary<MethodID, string>()
+                List = new Dictionary<MethodID, string>
                 {
                     { new MethodID( 0x00 ), "Copy" },
                     { new MethodID( 0x03 ), "Delta" },
@@ -126,6 +129,8 @@ namespace pdj.tiny7z.Archive
                     { new MethodID( 0x04, 0x01, 0x62 ), "Zip PPMd (PPMd-zip)" },
                     { new MethodID( 0x04, 0x01, 0x63 ), "Zip wzAES" },
 
+                    { new MethodID( 0x04, 0x02, 0x02 ), "BZip2" },
+
                     { new MethodID( 0x04, 0x03, 0x01 ), "Rar1" },
                     { new MethodID( 0x04, 0x03, 0x02 ), "Rar2" },
                     { new MethodID( 0x04, 0x03, 0x03 ), "Rar3" },
@@ -144,7 +149,24 @@ namespace pdj.tiny7z.Archive
 
                     { new MethodID( 0x04, 0x09, 0x01 ), "DeflateNSIS" },
                     { new MethodID( 0x04, 0x09, 0x02 ), "BZip2NSIS" },
+
+                    { new MethodID( 0x06, 0xF1, 0x07, 0x01 ), "7zAES (AES-256 + SHA-256)" },
                 };
+
+                Supported = new Dictionary<MethodID, Compression.Registry.Method>
+                {
+                    { new MethodID( 0x00 ), Compression.Registry.Method.Copy },
+                    { new MethodID( 0x21 ), Compression.Registry.Method.LZMA2 },
+                    { new MethodID( 0x03, 0x01, 0x01 ), Compression.Registry.Method.LZMA },
+                    { new MethodID( 0x03, 0x03, 0x01, 0x03 ), Compression.Registry.Method.BCJ },
+                    { new MethodID( 0x03, 0x03, 0x01, 0x1B ), Compression.Registry.Method.BCJ2 },
+                    { new MethodID( 0x03, 0x04, 0x01 ), Compression.Registry.Method.PPMd },
+                    { new MethodID( 0x04, 0x01, 0x08 ), Compression.Registry.Method.Deflate },
+                    { new MethodID( 0x04, 0x02, 0x02 ), Compression.Registry.Method.BZip2 },
+                    { new MethodID( 0x06, 0xF1, 0x07, 0x01 ), Compression.Registry.Method.AES },
+                };
+
+                Lookup = Supported.ToDictionary(kp => kp.Value, kp => kp.Key);
             }
             catch (Exception ex)
             {

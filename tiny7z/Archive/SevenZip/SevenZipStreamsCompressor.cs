@@ -16,7 +16,7 @@ namespace pdj.tiny7z.Archive
             public SevenZipHeader.Folder Folder;
         }
 
-        public Codec Codec
+        public Compression.Registry.Method? Method
         {
             get; set;
         }
@@ -26,11 +26,16 @@ namespace pdj.tiny7z.Archive
         public z7StreamsCompressor(Stream stream)
         {
             this.stream = stream;
-            Codec = null;
+            Method = Registry.Method.LZMA;
         }
 
         public PackedStream Compress(Stream inputStream)
         {
+            // Compression method
+            if (!Method.HasValue || !SevenZipMethods.Lookup.ContainsKey(Method.Value))
+                throw new SevenZipException("Undefined compression method.");
+            var MethodID = SevenZipMethods.Lookup[Method.Value];
+
             // create compressed stream information structure
             var ps = new PackedStream()
             {
@@ -44,8 +49,8 @@ namespace pdj.tiny7z.Archive
                     {
                         new SevenZipHeader.CoderInfo()
                         {
-                            Attributes = (Byte)Codec.ID.Size,
-                            CodecId = Codec.ID.Raw.ToArray(),
+                            Attributes = (Byte)MethodID.Raw.Length,
+                            CodecId = MethodID.Raw.ToArray(),
                             NumInStreams = 1,
                             NumOutStreams = 1
                         }
@@ -58,29 +63,28 @@ namespace pdj.tiny7z.Archive
                 }
             };
 
-            // get and setup compressor
-            ICoder encoder = Codec.GetCompressor();
-            if (encoder is IWriteCoderProperties)
-            {
-                using (var propsStream = new MemoryStream())
-                {
-                    (encoder as IWriteCoderProperties).WriteCoderProperties(propsStream);
-
-                    ps.Folder.CodersInfo[0].Attributes |= (Byte)SevenZipHeader.CoderInfo.AttrHasAttributes;
-                    ps.Folder.CodersInfo[0].Properties = propsStream.ToArray();
-                    ps.Folder.CodersInfo[0].PropertiesSize = (UInt64)ps.Folder.CodersInfo[0].Properties.Length;
-                }
-            }
-
-            // encode while calculating CRCs
+            // remember current offsets
             long outStreamStartOffset = this.stream.Position;
             long inStreamStartOffset = inputStream.Position;
+
+            // encode while calculating CRCs
             using (var inCRCStream = new Common.CRCStream(inputStream))
             using (var outCRCStream = new Common.CRCStream(stream))
             {
-                encoder.Code(inCRCStream, outCRCStream, -1, -1, null);
-                stream.Flush();
+                // get and setup compressor
+                using (var encoder = new Compression.LZMA.LzmaStream(new Compression.LZMA.LzmaEncoderProperties(), false, outCRCStream))
+                {
+                    // keep settings in header
+                    var properties = encoder.Properties;
+                    ps.Folder.CodersInfo[0].Attributes |= (Byte)SevenZipHeader.CoderInfo.AttrHasAttributes;
+                    ps.Folder.CodersInfo[0].Properties = properties.ToArray();
+                    ps.Folder.CodersInfo[0].PropertiesSize = (UInt64)ps.Folder.CodersInfo[0].Properties.Length;
 
+                    // go!
+                    Util.TransferTo(inCRCStream, encoder);
+                }
+
+                // store sizes and checksums
                 ps.Folder.UnPackSizes[0] = (UInt64)(inputStream.Position - inStreamStartOffset);
                 ps.Folder.UnPackCRC = inCRCStream.CRC;
                 ps.Sizes[0] = (UInt64)(this.stream.Position - outStreamStartOffset);

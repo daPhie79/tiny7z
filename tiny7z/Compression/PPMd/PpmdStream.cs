@@ -13,7 +13,7 @@ namespace pdj.tiny7z.Compression.PPMd
         private readonly bool compress;
         private readonly Model model;
         // private readonly ModelPPM modelH;
-        private readonly Decoder decoder;
+        // private readonly Decoder decoder;
         private long position;
         private bool isDisposed;
 

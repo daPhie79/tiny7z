@@ -62,6 +62,7 @@
     <Compile Include="Common\Streams\SubStream.cs" />
     <None Include="LICENSE" />
     <None Include="_Legacy\Compress\Codec.cs" />
+    <Compile Include="Common\Util.cs" />
     <Compile Include="Compression\IPasswordProvider.cs" />
     <None Include="_Legacy\Compress\LZMA\CodecLZMA.cs" />
     <None Include="_Legacy\Compress\LZMA\LZMA\LzmaBase.cs" />

@@ -35,8 +35,9 @@ namespace pdj.tiny7z.Compression
             Method method,
             Stream[] inStreams,
             Byte[] properties,
-            IPasswordProvider pw,
-            long limit)
+            IPasswordProvider password,
+            long inSize,
+            long outSize)
         {
             switch (method)
             {
@@ -45,21 +46,20 @@ namespace pdj.tiny7z.Compression
                         throw new NotSupportedException();
                     return inStreams.Single();
                 case Method.AES:
-                    throw new NotSupportedException();
+                    return new AES.AesDecoderStream(inStreams.Single(), properties, password, outSize);
                 case Method.BCJ:
-                    break;
+                    return new BCJ.BcjFilter(false, inStreams.Single());
                 case Method.BCJ2:
-                    break;
+                    return new BCJ2.Bcj2DecoderStream(inStreams, properties, outSize);
                 case Method.BZip2:
                     throw new NotSupportedException();
                 case Method.Deflate:
                     throw new NotSupportedException();
                 case Method.LZMA:
-                    break;
                 case Method.LZMA2:
-                    break;
+                    return new LZMA.LzmaStream(properties, inStreams.Single(), inSize, outSize);
                 case Method.PPMd:
-                    break;
+                    return new PPMd.PpmdStream(new PPMd.PpmdProperties(properties), inStreams.Single(), false);
             }
             return null;
         }

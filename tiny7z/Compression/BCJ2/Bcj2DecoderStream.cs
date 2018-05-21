@@ -58,10 +58,6 @@ namespace pdj.tiny7z.Compression.BCJ2
 
             private void UpdateModel(uint symbol)
             {
-                /*
-                Prob -= (Prob + ((symbol - 1) & ((1 << numMoveBits) - 1))) >> numMoveBits;
-                Prob += (1 - symbol) << (kNumBitModelTotalBits - numMoveBits);
-                */
                 if (symbol == 0)
                 {
                     Prob += (kBitModelTotal - Prob) >> numMoveBits;
