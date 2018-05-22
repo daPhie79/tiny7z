@@ -156,7 +156,7 @@ namespace pdj.tiny7z.Common
                 }
 
                 if (count > 0)
-                    throw new EndOfStreamException();
+                    throw new EndOfStreamException($"{count} bytes left to write.");
             }
         }
 

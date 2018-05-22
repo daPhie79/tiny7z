@@ -61,6 +61,12 @@ namespace pdj.tiny7z.Archive
             buildFilesIndex();
         }
 
+        public void Dump()
+        {
+            string json = Newtonsoft.Json.JsonConvert.SerializeObject(_Files, Newtonsoft.Json.Formatting.Indented);
+            Trace.WriteLine(json);
+        }
+
         public IExtractor ExtractArchive(string outputDirectory)
         {
             return ExtractFiles(new UInt64[0], outputDirectory);
@@ -212,13 +218,14 @@ namespace pdj.tiny7z.Archive
                     if (File.Exists(fullPath) && !OverwriteExistingFiles && !SkipExistingFiles)
                         throw new IOException($"File `{file.Name}` already exists.");
                     if (!File.Exists(fullPath) || OverwriteExistingFiles)
-                        return File.Create(fullPath);
+                        return new FileStream(fullPath, FileMode.Create, FileAccess.Write, FileShare.None, 128 * 1024);
 
                     Trace.TraceWarning($"File `{file.Name} already exists, skipping.");
                     return null;
                 },
 
                 (ulong index, Stream stream) => {
+                    stream.Close();
                     SevenZipArchiveFile file = _Files[streamToFileIndex[index]];
                     string fullPath = Path.Combine(outputDirectory, file.Name);
                     if (file.Time != null)
@@ -387,15 +394,14 @@ namespace pdj.tiny7z.Archive
                 return;
             }
 
-            List<UInt64>.Enumerator u = new List<UInt64>(0).GetEnumerator();
-            if (ssi != null && ssi.UnPackSizes.Any())
-                u = ssi.UnPackSizes.GetEnumerator();
+            int upsIndex = 0;
+            int upcIndex = 0;
 
             long fileIndex = 0;
             long streamIndex = 0;
             for (long i = 0; i < (long)streamsInfo.UnPackInfo.NumFolders; ++i)
             {
-                SevenZipHeader.Folder folder = streamsInfo.UnPackInfo.Folders[i];
+                SevenZipHeader.Folder folder = ui.Folders[i];
                 long ups = 1;
                 if (ssi != null && ssi.NumUnPackStreamsInFolders.Any())
                     ups = (long)ssi.NumUnPackStreamsInFolders[i];
@@ -406,16 +412,36 @@ namespace pdj.tiny7z.Archive
                 UInt32? crc = folder.UnPackCRC;
                 for (long j = 0; j < ups; ++j)
                 {
-                    if (u.MoveNext())
-                        size = u.Current;
-                    else if (j > 0)
-                        throw new SevenZipException("Unexpected, missing UnPackSize entry(ies).");
+                    if (ssi != null && ssi.UnPackSizes.Any())
+                    {
+                        if (upsIndex > ssi.UnPackSizes.Count())
+                            throw new SevenZipException("Unexpected, missing UnPackSize entry(ies).");
+                        size = ssi.UnPackSizes[upsIndex++];
+                    }
+                    else
+                    {
+                        if (ups > 1)
+                            throw new SevenZipException("Missing SubStreamsInfo header chunk.");
+                    }
+
+                    if (crc == null || ups > 1)
+                    {
+                        if (ssi != null && ssi.Digests != null && (int)ssi.Digests.NumStreams() > upcIndex)
+                        {
+                            crc = ssi.Digests.CRCs[upcIndex];
+                        }
+                        upcIndex++;
+                    }
 
                     while (_Files[fileIndex].IsEmpty)
                         if (++fileIndex >= _Files.LongLength)
                             throw new SevenZipException("Missing Files entries for defined sizes.");
                     _Files[fileIndex].Size = size;
-                    _Files[fileIndex].UnPackIndex = (UInt64?)streamIndex++;
+                    _Files[fileIndex].CRC = crc;
+                    _Files[fileIndex].UnPackIndex = (UInt64?)streamIndex;
+
+                    fileIndex++;
+                    streamIndex++;
                 }
             }
 

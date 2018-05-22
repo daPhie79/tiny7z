@@ -209,7 +209,7 @@ namespace pdj.tiny7z.Archive
         void compressFilesSolid(ulong numStreams, Dictionary<ulong, ulong> streamToFileIndex)
         {
             var sc = new z7StreamsCompressor(stream);
-            // sc.Codec = Compress.Codec.Query(new Compress.CodecID(0x03, 0x01, 0x01));
+            sc.Method = Compression.Registry.Method.LZMA;
 
             Trace.TraceInformation($"Compressing `{numStreams} files` into a solid block...");
 
@@ -364,6 +364,7 @@ namespace pdj.tiny7z.Archive
             // write headers at the end of output stream
             headerStream.Position = 0;
             headerStream.CopyTo(stream);
+            headerStream.Dispose();
 
             // regenerate signature header with positions and crcs
             var signatureHeader = new SevenZipArchive.SignatureHeader()

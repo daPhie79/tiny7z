@@ -25,12 +25,6 @@ namespace pdj.tiny7z.Compression
         /// <summary>
         /// Creates a stream of a specific decoder type.
         /// </summary>
-        /// <param name="method">Decoder type.</param>
-        /// <param name="inStreams">One or more streams needed to feed to the decoder.</param>
-        /// <param name="properties">Array of bytes containing properties, if required by the decoder.</param>
-        /// <param name="pw">Password, if needed.</param>
-        /// <param name="limit">Size limit.</param>
-        /// <returns></returns>
         public static Stream GetDecoderStream(
             Method method,
             Stream[] inStreams,

@@ -1,5 +1,4 @@
 ﻿using pdj.tiny7z.Common;
-using pdj.tiny7z.Compression;
 using System;
 using System.IO;
 using System.Linq;
@@ -26,7 +25,7 @@ namespace pdj.tiny7z.Archive
         public z7StreamsCompressor(Stream stream)
         {
             this.stream = stream;
-            Method = Registry.Method.LZMA;
+            Method = Compression.Registry.Method.LZMA;
         }
 
         public PackedStream Compress(Stream inputStream)
@@ -68,8 +67,8 @@ namespace pdj.tiny7z.Archive
             long inStreamStartOffset = inputStream.Position;
 
             // encode while calculating CRCs
-            using (var inCRCStream = new Common.CRCStream(inputStream))
-            using (var outCRCStream = new Common.CRCStream(stream))
+            using (var inCRCStream = new CRCStream(inputStream))
+            using (var outCRCStream = new CRCStream(stream))
             {
                 // get and setup compressor
                 using (var encoder = new Compression.LZMA.LzmaStream(new Compression.LZMA.LzmaEncoderProperties(), false, outCRCStream))

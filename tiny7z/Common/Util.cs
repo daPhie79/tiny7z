@@ -10,70 +10,79 @@ namespace pdj.tiny7z.Common
     public static class Util
     {
         /// <summary>
-        /// Alternative stream copy method to CopyTo.
+        /// Alternative stream copy method to CopyTo. Stops writing when count is reached.
+        /// </summary>
+        public static long TransferTo(this Stream source, Stream destination, long count)
+        {
+            if (count == 0)
+                throw new ArgumentOutOfRangeException();
+
+            byte[] array = GetTransferByteArray();
+            long total = 0;
+            while (count > 0)
+            {
+                int next = array.Length;
+                if (next > count)
+                    next = (int)count;
+
+                int r = source.Read(array, 0, next);
+                if (r == 0)
+                    break;
+
+                total += r;
+                count -= r;
+                destination.Write(array, 0, r);
+            }
+            return total;
+        }
+
+        /// <summary>
+        /// Alternative stream copy method to CopyTo. Stops writing when no more data is available from input.
         /// </summary>
         public static long TransferTo(this Stream source, Stream destination)
         {
             byte[] array = GetTransferByteArray();
             int count;
             long total = 0;
-            while (ReadTransferBlock(source, array, out count))
+            while ((count = source.Read(array, 0, array.Length)) > 0)
             {
-                total += count;
                 destination.Write(array, 0, count);
+                total += count;
             }
             return total;
         }
 
         /// <summary>
-        /// Used by TransferTo
-        /// </summary>
-        private static bool ReadTransferBlock(Stream source, byte[] array, out int count)
-        {
-            return (count = source.Read(array, 0, array.Length)) != 0;
-        }
-
-        /// <summary>
-        /// Used by TransferTo
+        /// Returns a write buffer for TransferTo
         /// </summary>
         private static byte[] GetTransferByteArray()
         {
-            return new byte[1024 * 1024];
+            return new byte[4 << 20];
         }
 
         /// <summary>
-        /// Quick and dirty little-endian UInt16 get from a byte array.
+        /// Performs an unsigned bitwise right shift with the specified number
         /// </summary>
-        public static UInt16 GetLittleEndianUInt16(byte[] buffer, int offset)
+        public static int URShift(int number, int bits)
         {
-            return (UInt16)(buffer[offset]
-                   + ((uint)buffer[offset + 1] << 8));
+            if (number >= 0)
+            {
+                return number >> bits;
+            }
+            return (number >> bits) + (2 << ~bits);
         }
 
         /// <summary>
-        /// Quick and dirty little-endian UInt32 get from a byte array.
+        /// Performs an unsigned bitwise right shift with the specified number
         /// </summary>
-        public static UInt32 GetLittleEndianUInt32(byte[] buffer, int offset)
+        public static long URShift(long number, int bits)
         {
-            return buffer[offset]
-                   + ((uint)buffer[offset + 1] << 8)
-                   + ((uint)buffer[offset + 2] << 16)
-                   + ((uint)buffer[offset + 3] << 24);
-        }
-
-        /// <summary>
-        /// Quick and dirty little-endian UInt64 get from a byte array.
-        /// </summary>
-        public static UInt64 GetLittleEndianUInt64(byte[] buffer, int offset)
-        {
-            return buffer[offset]
-                   + ((ulong)buffer[offset + 1] << 8)
-                   + ((ulong)buffer[offset + 2] << 16)
-                   + ((ulong)buffer[offset + 3] << 24)
-                   + ((ulong)buffer[offset + 4] << 32)
-                   + ((ulong)buffer[offset + 5] << 40)
-                   + ((ulong)buffer[offset + 6] << 48)
-                   + ((ulong)buffer[offset + 7] << 56);
+            if (number >= 0)
+            {
+                return number >> bits;
+            }
+            return (number >> bits) + (2L << ~bits);
         }
     }
+
 }

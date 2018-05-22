@@ -1,4 +1,5 @@
-﻿using System;
+﻿using pdj.tiny7z.Common;
+using System;
 using System.IO;
 using pdj.tiny7z.Compression.LZMA.LZ;
 
@@ -55,7 +56,7 @@ namespace pdj.tiny7z.Compression.LZMA
 
             if (!isLZMA2)
             {
-                dictionarySize = (int)Common.Util.GetLittleEndianUInt32(properties, 1);
+                dictionarySize = DataConverter.LittleEndian.GetInt32(properties, 1);
                 outWindow.Create(dictionarySize);
                 if (presetDictionary != null)
                 {

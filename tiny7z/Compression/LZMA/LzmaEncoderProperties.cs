@@ -11,12 +11,12 @@
         }
 
         public LzmaEncoderProperties(bool eos)
-            : this(eos, 1 << 20)
+            : this(eos, 1 << 24)
         {
         }
 
         public LzmaEncoderProperties(bool eos, int dictionary)
-            : this(eos, dictionary, 32)
+            : this(eos, dictionary, 128)
         {
         }
 

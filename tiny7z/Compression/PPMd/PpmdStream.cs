@@ -1,7 +1,7 @@
 ﻿using System;
 using System.IO;
 using pdj.tiny7z.Compression.LZMA.RangeCoder;
-// using pdj.tiny7z.Compression.PPMd.H;
+using pdj.tiny7z.Compression.PPMd.H;
 using pdj.tiny7z.Compression.PPMd.I1;
 
 namespace pdj.tiny7z.Compression.PPMd
@@ -12,8 +12,8 @@ namespace pdj.tiny7z.Compression.PPMd
         private readonly Stream stream;
         private readonly bool compress;
         private readonly Model model;
-        // private readonly ModelPPM modelH;
-        // private readonly Decoder decoder;
+        private readonly ModelPPM modelH;
+        private readonly Decoder decoder;
         private long position;
         private bool isDisposed;
 
@@ -37,27 +37,23 @@ namespace pdj.tiny7z.Compression.PPMd
             }
             if (properties.Version == PpmdVersion.H)
             {
-                //modelH = new ModelPPM();
-                //if (compress)
-                //{
-                //    throw new NotImplementedException();
-                //}
-                //modelH.decodeInit(stream, properties.ModelOrder, properties.AllocatorSize);
-
-                throw new NotImplementedException();
+                modelH = new ModelPPM();
+                if (compress)
+                {
+                    throw new NotImplementedException();
+                }
+                modelH.decodeInit(stream, properties.ModelOrder, properties.AllocatorSize);
             }
             if (properties.Version == PpmdVersion.H7z)
             {
-                //modelH = new ModelPPM();
-                //if (compress)
-                //{
-                //    throw new NotImplementedException();
-                //}
-                //modelH.decodeInit(null, properties.ModelOrder, properties.AllocatorSize);
-                //decoder = new Decoder();
-                //decoder.Init(stream);
-
-                throw new NotImplementedException();
+                modelH = new ModelPPM();
+                if (compress)
+                {
+                    throw new NotImplementedException();
+                }
+                modelH.decodeInit(null, properties.ModelOrder, properties.AllocatorSize);
+                decoder = new Decoder();
+                decoder.Init(stream);
             }
         }
 
@@ -105,23 +101,21 @@ namespace pdj.tiny7z.Compression.PPMd
             }
             if (properties.Version == PpmdVersion.H)
             {
-                //int c;
-                //while (size < count && (c = modelH.decodeChar()) >= 0)
-                //{
-                //    buffer[offset++] = (byte)c;
-                //    size++;
-                //}
-                throw new NotImplementedException();
+                int c;
+                while (size < count && (c = modelH.decodeChar()) >= 0)
+                {
+                    buffer[offset++] = (byte)c;
+                    size++;
+                }
             }
             if (properties.Version == PpmdVersion.H7z)
             {
-                //int c;
-                //while (size < count && (c = modelH.decodeChar(decoder)) >= 0)
-                //{
-                //    buffer[offset++] = (byte)c;
-                //    size++;
-                //}
-                throw new NotImplementedException();
+                int c;
+                while (size < count && (c = modelH.decodeChar(decoder)) >= 0)
+                {
+                    buffer[offset++] = (byte)c;
+                    size++;
+                }
             }
             position += size;
             return size;

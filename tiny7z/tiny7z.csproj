@@ -21,6 +21,7 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -52,6 +53,7 @@
   <ItemGroup>
     <Compile Include="Archive\Archive.cs" />
     <Compile Include="Archive\ArchiveFile.cs" />
+    <Compile Include="Common\DataConverter.cs" />
     <Compile Include="Common\StreamExtensions.cs" />
     <Compile Include="Common\Streams\CRCStream.cs" />
     <Compile Include="Common\Streams\MultiFileStream.cs" />
@@ -82,7 +84,6 @@
     <Compile Include="Archive\SevenZip\SevenZipException.cs" />
     <Compile Include="Archive\SevenZip\SevenZipExtractor.cs" />
     <Compile Include="Archive\SevenZip\SevenZipArchive.cs" />
-    <Compile Include="Compression\CompressionMode.cs" />
     <Compile Include="Compression\BCJ\BcjFilter.cs" />
     <Compile Include="Compression\BCJ\AbstractFilter.cs" />
     <Compile Include="Compression\AES\AesDecoderStream.cs" />
@@ -100,6 +101,17 @@
     <Compile Include="Compression\LZMA\RangeCoder\RangeCoder.cs" />
     <Compile Include="Compression\LZMA\RangeCoder\RangeCoderBit.cs" />
     <Compile Include="Compression\LZMA\RangeCoder\RangeCoderBitTree.cs" />
+    <Compile Include="Compression\PPMd\H\FreqData.cs" />
+    <Compile Include="Compression\PPMd\H\ModelPPM.cs" />
+    <Compile Include="Compression\PPMd\H\Pointer.cs" />
+    <Compile Include="Compression\PPMd\H\PPMContext.cs" />
+    <Compile Include="Compression\PPMd\H\RangeCoder.cs" />
+    <Compile Include="Compression\PPMd\H\RarMemBlock.cs" />
+    <Compile Include="Compression\PPMd\H\RarNode.cs" />
+    <Compile Include="Compression\PPMd\H\SEE2Context.cs" />
+    <Compile Include="Compression\PPMd\H\State.cs" />
+    <Compile Include="Compression\PPMd\H\StateRef.cs" />
+    <Compile Include="Compression\PPMd\H\SubAllocator.cs" />
     <Compile Include="Compression\Registry.cs" />
     <Compile Include="Compression\PPMd\I1\Allocator.cs" />
     <Compile Include="Compression\PPMd\I1\Coder.cs" />

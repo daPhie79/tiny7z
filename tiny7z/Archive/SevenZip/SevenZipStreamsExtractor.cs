@@ -1,5 +1,4 @@
 ﻿using pdj.tiny7z.Common;
-using pdj.tiny7z.Compression;
 using System;
 using System.Diagnostics;
 using System.Linq;
@@ -93,10 +92,11 @@ namespace pdj.tiny7z.Archive
             ulong outSize = folder.GetUnPackSize();
 
             // set decompressor
-            using (var decoder = Compression.Registry.GetDecoderStream(SevenZipMethods.Supported[methodID], new Stream[] { stream }, folder.CodersInfo[0].Properties, null, (long)inSize, (long)outSize))
+            using (var inStream = new SubStream(stream, (long)packPos, (long)inSize))
+            using (var decoder = Compression.Registry.GetDecoderStream(SevenZipMethods.Supported[methodID], new Stream[] { inStream }, folder.CodersInfo[0].Properties, null, -1, (long)outSize))
             {
+                Stream outStream = null;
                 // define output stream
-                Stream outStream;
                 if (matches == null)
                 {
                     outStream = onStreamRequest(outputStreamIndexOffset);
@@ -134,8 +134,8 @@ namespace pdj.tiny7z.Archive
                     outStream = multi;
                 }
 
-                // actual extraction is done here
-                Util.TransferTo(decoder, outStream);
+                // actual extraction is done here (some decoder streams require knowing output size in advance, like PPMd)
+                Util.TransferTo(decoder, outStream, (long)outSize);
 
                 // call stream close delegate if only one stream and delegate present
                 if (matches == null)

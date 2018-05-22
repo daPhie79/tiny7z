@@ -34,7 +34,7 @@ namespace pdj.tiny7z.Compression.PPMd
         {
             if (properties.Length == 2)
             {
-                ushort props = Util.GetLittleEndianUInt16(properties, 0);
+                ushort props = DataConverter.LittleEndian.GetUInt16(properties, 0);
                 AllocatorSize = (((props >> 4) & 0xff) + 1) << 20;
                 ModelOrder = (props & 0x0f) + 1;
                 ModelRestorationMethod = (ModelRestorationMethod)(props >> 12);
@@ -42,7 +42,7 @@ namespace pdj.tiny7z.Compression.PPMd
             else if (properties.Length == 5)
             {
                 Version = PpmdVersion.H7z;
-                AllocatorSize = (int)Util.GetLittleEndianUInt32(properties, 1);
+                AllocatorSize = DataConverter.LittleEndian.GetInt32(properties, 1);
                 ModelOrder = properties[0];
             }
         }

@@ -15,7 +15,6 @@ namespace pdj.tiny7z.Common
 
         protected override void CloseStream()
         {
-            base.CloseStream();
             onCloseStream?.Invoke((ulong)currentIndex, internalStream);
         }
 

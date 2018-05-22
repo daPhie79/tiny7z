@@ -144,7 +144,7 @@ namespace pdj.tiny7z.Archive
         /// <summary>
         /// Open an existing 7zip file for reading
         /// </summary>
-        SevenZipArchive Open()
+        void Open()
         {
             SignatureHeader sig = stream.ReadStruct<SignatureHeader>();
             if (!sig.Signature.SequenceEqual(kSignature))
@@ -215,7 +215,6 @@ namespace pdj.tiny7z.Archive
                 }
 
                 IsValid = true;
-                return this;
             }
             finally
             {
@@ -227,7 +226,7 @@ namespace pdj.tiny7z.Archive
         /// <summary>
         /// Create a new 7zip file for writing
         /// </summary>
-        SevenZipArchive Create()
+        void Create()
         {
             this.signatureHeader = new SignatureHeader()
             {
@@ -241,7 +240,6 @@ namespace pdj.tiny7z.Archive
             stream.Write(this.signatureHeader.GetByteArray(), 0, Marshal.SizeOf(this.signatureHeader));
 
             this.Header = new SevenZipHeader(null, true);
-            return this;
         }
 
     }
