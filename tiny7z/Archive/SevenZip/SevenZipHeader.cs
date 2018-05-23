@@ -336,35 +336,6 @@ namespace pdj.tiny7z.Archive
                 this.UnPackCRC = null;
             }
 
-            /// <summary>
-            /// Helper to get final unpacked size of folder
-            /// </summary>
-            /// <returns></returns>
-            public UInt64 GetUnPackSize()
-            {
-                if (UnPackSizes.Length == 0)
-                    return 0;
-
-                for (long i = 0; i < UnPackSizes.LongLength; ++i)
-                {
-                    bool foundBindPair = false;
-                    for (ulong j = 0; j < NumBindPairs; ++j)
-                    {
-                        if (BindPairsInfo[j].OutIndex == (UInt64)i)
-                        {
-                            foundBindPair = true;
-                            break;
-                        }
-                    }
-                    if (!foundBindPair)
-                    {
-                        return UnPackSizes[i];
-                    }
-                }
-
-                throw new SevenZipException("Could not find final unpack size.");
-            }
-
             public void Parse(Stream hs)
             {
                 NumCoders = hs.ReadDecodedUInt64();
@@ -408,6 +379,55 @@ namespace pdj.tiny7z.Archive
                 if (NumPackedStreams > 1)
                     for (ulong i = 0; i < NumPackedStreams; ++i)
                         hs.WriteEncodedUInt64(PackedIndices[i]);
+            }
+
+            public UInt64 GetUnPackSize()
+            {
+                if (UnPackSizes.Length == 0)
+                    return 0;
+
+                for (long i = 0; i < UnPackSizes.LongLength; ++i)
+                {
+                    bool foundBindPair = false;
+                    for (ulong j = 0; j < NumBindPairs; ++j)
+                    {
+                        if (BindPairsInfo[j].OutIndex == (UInt64)i)
+                        {
+                            foundBindPair = true;
+                            break;
+                        }
+                    }
+                    if (!foundBindPair)
+                    {
+                        return UnPackSizes[i];
+                    }
+                }
+
+                throw new SevenZipException("Could not find final unpack size.");
+            }
+
+            public Int64 FindBindPairForInStream(UInt64 inStreamIndex)
+            {
+                for (UInt64 i = 0; i < NumBindPairs; ++i)
+                    if (BindPairsInfo[i].InIndex == inStreamIndex)
+                        return (Int64)i;
+                return -1;
+            }
+
+            public Int64 FindBindPairForOutStream(UInt64 outStreamIndex)
+            {
+                for (UInt64 i = 0; i < NumBindPairs; ++i)
+                    if (BindPairsInfo[i].OutIndex == outStreamIndex)
+                        return (Int64)i;
+                return -1;
+            }
+
+            public Int64 FindPackedIndexForInStream(UInt64 inStreamIndex)
+            {
+                for (UInt64 i = 0; i < NumPackedStreams; ++i)
+                    if (PackedIndices[i] == inStreamIndex)
+                        return (Int64)i;
+                return -1;
             }
         }
 

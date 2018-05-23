@@ -320,15 +320,13 @@ namespace pdj.tiny7z.Archive
             return true;
         }
 
-        long findFileIndex(string Name, bool exactPath = false)
+        long findFileIndex(string Name, bool exactPath)
         {
-            for (long i = 0; i < _Files.LongLength; ++i)
-            {
-                if ((exactPath && _Files[i].Name.Equals(Name)) ||
-                    (!exactPath && Path.GetFileName(_Files[i].Name).Equals(Path.GetFileName(Name))))
-                    return i;
-            }
-            return -1;
+            ulong? index = _Files
+                .Where(file => exactPath ? (file.Name == Name) : (Path.GetFileName(Name) == Path.GetFileName(file.Name)))
+                .Select(file => file.UnPackIndex)
+                .FirstOrDefault();
+            return index == default(ulong?) ? -1 : (long)index;
         }
 
         void buildFilesIndex()

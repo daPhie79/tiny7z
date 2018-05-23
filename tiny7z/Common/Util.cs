@@ -17,7 +17,7 @@ namespace pdj.tiny7z.Common
             if (count == 0)
                 throw new ArgumentOutOfRangeException();
 
-            byte[] array = GetTransferByteArray();
+            byte[] array = getTransferByteArray();
             long total = 0;
             while (count > 0)
             {
@@ -41,7 +41,7 @@ namespace pdj.tiny7z.Common
         /// </summary>
         public static long TransferTo(this Stream source, Stream destination)
         {
-            byte[] array = GetTransferByteArray();
+            byte[] array = getTransferByteArray();
             int count;
             long total = 0;
             while ((count = source.Read(array, 0, array.Length)) > 0)
@@ -55,9 +55,9 @@ namespace pdj.tiny7z.Common
         /// <summary>
         /// Returns a write buffer for TransferTo
         /// </summary>
-        private static byte[] GetTransferByteArray()
+        private static byte[] getTransferByteArray()
         {
-            return new byte[4 << 20];
+            return new byte[4 << 14];
         }
 
         /// <summary>
@@ -83,6 +83,13 @@ namespace pdj.tiny7z.Common
             }
             return (number >> bits) + (2L << ~bits);
         }
+
+        public static void Dump(object o)
+        {
+            string json = Newtonsoft.Json.JsonConvert.SerializeObject(o, Newtonsoft.Json.Formatting.Indented);
+            System.Diagnostics.Trace.WriteLine(json);
+        }
+
     }
 
 }

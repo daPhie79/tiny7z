@@ -1,9 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace pdj.tiny7z.Common
 {
@@ -12,23 +9,26 @@ namespace pdj.tiny7z.Common
         private Stream internalStream;
         private long startOffset;
         private long windowSize;
+        private long currentOffset;
 
-        public override bool CanRead => internalStream.CanRead;
+        public override bool CanRead => internalStream is Stream && internalStream.CanRead;
 
-        public override bool CanSeek => internalStream.CanSeek;
+        public override bool CanSeek => internalStream is Stream && internalStream.CanSeek;
 
-        public override bool CanWrite => internalStream.CanWrite;
+        public override bool CanWrite => internalStream is Stream && internalStream.CanWrite;
+
+        public override bool CanTimeout => internalStream is Stream && internalStream.CanTimeout;
 
         public override long Length => windowSize;
 
         public override long Position
         {
-            get => internalStream.Position - startOffset;
+            get => currentOffset - startOffset;
             set
             {
-                if (value < 0) value = 0;
-                if (value > windowSize) value = windowSize;
-                internalStream.Position = startOffset + windowSize;
+                if (value < 0 || value > windowSize)
+                    throw new ArgumentOutOfRangeException(nameof(value));
+                currentOffset = startOffset + value;
             }
         }
 
@@ -39,31 +39,44 @@ namespace pdj.tiny7z.Common
             this.internalStream = stream;
             this.startOffset = 0;
             this.windowSize = stream.Length;
+            this.currentOffset = stream.Position;
         }
 
         public SubStream(Stream stream, long startOffset, long windowSize)
             : base()
         {
-            if (startOffset < 0 || startOffset > stream.Length || windowSize <= 0)
-                throw new ArgumentOutOfRangeException();
+            if (startOffset < 0 || startOffset > stream.Length)
+                throw new ArgumentOutOfRangeException(nameof(startOffset));
+            if (windowSize <= 0 || windowSize + startOffset > stream.Length)
+                throw new ArgumentOutOfRangeException(nameof(windowSize));
 
             this.internalStream = stream;
             this.startOffset = startOffset;
             this.windowSize = windowSize;
+            this.currentOffset = startOffset;
         }
 
         public override void Write(byte[] array, int offset, int count)
         {
+            if (offset < 0 || offset >= array.Length)
+                throw new ArgumentOutOfRangeException(nameof(offset));
+            if (count <= 0 || count + offset > array.Length)
+                throw new ArgumentOutOfRangeException(nameof(count));
+
             if (internalStream is Stream)
             {
-                long currentPosition = internalStream.Position;
-                if (currentPosition + count > startOffset + windowSize)
+                internalStream.Position = currentOffset;
+                if (currentOffset + count > startOffset + windowSize)
                 {
-                    count = (int)((startOffset + windowSize) - currentPosition);
+                    int newCount = (int)((startOffset + windowSize) - currentOffset);
+                    Trace.TraceWarning($"End of substream window reached, {newCount} of {count} bytes have been written.");
+
+                    count = newCount;
                 }
                 if (count > 0)
                 {
                     internalStream.Write(array, offset, count);
+                    currentOffset += count;
                 }
             }
         }
@@ -72,24 +85,34 @@ namespace pdj.tiny7z.Common
         {
             if (internalStream is Stream)
             {
+                internalStream.Position = currentOffset;
                 if (internalStream.Position < startOffset + windowSize)
+                {
                     internalStream.WriteByte(value);
+                    ++currentOffset;
+                }
+                else
+                    Trace.TraceWarning("End of substream window reached, one byte was not written.");
             }
         }
 
         public override int Read(byte[] array, int offset, int count)
         {
+            if (offset < 0 || offset >= array.Length)
+                throw new ArgumentOutOfRangeException(nameof(offset));
+            if (count <= 0 || count + offset > array.Length)
+                throw new ArgumentOutOfRangeException(nameof(count));
+
             int r = 0;
             if (internalStream is Stream)
             {
-                long currentPosition = internalStream.Position;
-                if (currentPosition + count > startOffset + windowSize)
-                {
-                    count = (int)((startOffset + windowSize) - currentPosition);
-                }
+                internalStream.Position = currentOffset;
+                if (currentOffset + count > startOffset + windowSize)
+                    count = (int)((startOffset + windowSize) - currentOffset);
                 if (count > 0)
                 {
                     r = internalStream.Read(array, offset, count);
+                    currentOffset += count;
                 }
             }
             return r;
@@ -100,8 +123,12 @@ namespace pdj.tiny7z.Common
             int r = -1;
             if (internalStream is Stream)
             {
-                if (internalStream.Position < startOffset + windowSize)
+                internalStream.Position = currentOffset;
+                if (currentOffset < startOffset + windowSize)
+                {
                     r = internalStream.ReadByte();
+                    ++currentOffset;
+                }
             }
             return r;
         }
@@ -123,5 +150,10 @@ namespace pdj.tiny7z.Common
         {
             throw new NotImplementedException();
         }
+
+        public override int ReadTimeout { get => 0; }
+
+        public override int WriteTimeout { get => 0; }
+
     }
 }
