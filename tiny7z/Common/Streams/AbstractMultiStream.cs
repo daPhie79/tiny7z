@@ -4,8 +4,12 @@ using System.Linq;
 
 namespace pdj.tiny7z.Common
 {
+    /// <summary>
+    /// Abstract stream class for bundling multiple streams together as one.
+    /// </summary>
     public abstract class AbstractMultiStream : Stream
     {
+        #region Virtual methods
         /// <summary>
         /// This is called when current stream is exhausted, to prepare next stream.
         /// </summary>
@@ -18,7 +22,9 @@ namespace pdj.tiny7z.Common
         {
             internalStream.Close();
         }
+        #endregion
 
+        #region Properties
         /// <summary>
         /// For reading streams, this will hold stream sizes once they have been exhausted. For writing streams, these have to be filled in advance.
         /// </summary>
@@ -34,71 +40,18 @@ namespace pdj.tiny7z.Common
         {
             get; protected set;
         }
+        #endregion
 
-        /// <summary>
-        /// Private members.
-        /// </summary>
+        #region Private members
         protected CRCStream internalStream;
         protected long numStreams;
         protected long currentIndex;
         private long currentOffset;
         private long currentPos;
         private long currentSize;
+        #endregion
 
-        /// <summary>
-        /// Read capabilities (also gets stream ready).
-        /// </summary>
-        public override bool CanRead
-        {
-            get
-            {
-                getReady();
-                return currentIndex < numStreams && internalStream is Stream && internalStream.CanRead;
-            }
-        }
-
-
-        /// <summary>
-        /// Write capabilities (also gets stream ready).
-        /// </summary>
-        public override bool CanWrite
-        {
-            get
-            {
-                getReady();
-                return currentIndex < numStreams && Sizes != null && Sizes[currentIndex] != null && internalStream is Stream && internalStream.CanWrite;
-            }
-        }
-
-        /// <summary>
-        /// Can't seek on this stream.
-        /// </summary>
-        public override bool CanSeek => false;
-
-        public override long Length
-        {
-            get
-            {
-                if (Sizes != null && Sizes.LongLength >= numStreams)
-                {
-                    return Sizes.Sum(size => (long)size);
-                }
-                return currentPos + currentSize;
-            }
-        }
-
-        /// <summary>
-        /// Getting position is fine. Setting, not!
-        /// </summary>
-        public override long Position
-        {
-            get => currentPos;
-            set => throw new NotImplementedException();
-        }
-
-        /// <summary>
-        /// The only required parameter is (max) number of streams.
-        /// </summary>
+        #region Stream implementation
         public AbstractMultiStream(UInt64 numStreams)
             : base()
         {
@@ -116,9 +69,6 @@ namespace pdj.tiny7z.Common
             currentSize = 0;
         }
 
-        /// <summary>
-        /// Properly close currently opened stream.
-        /// </summary>
         public override void Close()
         {
             if (internalStream is Stream)
@@ -128,6 +78,44 @@ namespace pdj.tiny7z.Common
                 internalStream.Dispose();
                 internalStream = null;
             }
+        }
+
+        public override bool CanRead
+        {
+            get
+            {
+                getReady();
+                return currentIndex < numStreams && internalStream is Stream && internalStream.CanRead;
+            }
+        }
+
+        public override bool CanWrite
+        {
+            get
+            {
+                getReady();
+                return currentIndex < numStreams && Sizes != null && Sizes[currentIndex] != null && internalStream is Stream && internalStream.CanWrite;
+            }
+        }
+
+        public override bool CanSeek => false;
+
+        public override long Length
+        {
+            get
+            {
+                if (Sizes != null && Sizes.LongLength >= numStreams)
+                {
+                    return Sizes.Sum(size => (long)size);
+                }
+                return currentPos + currentSize;
+            }
+        }
+
+        public override long Position
+        {
+            get => currentPos;
+            set => throw new NotImplementedException();
         }
 
         public override void Write(byte[] array, int offset, int count)
@@ -236,7 +224,7 @@ namespace pdj.tiny7z.Common
 
         public override void Flush()
         {
-            if (CanWrite)
+            if (internalStream is Stream)
             {
                 internalStream.Flush();
             }
@@ -251,7 +239,9 @@ namespace pdj.tiny7z.Common
         {
             throw new NotImplementedException();
         }
+        #endregion
 
+        #region Private methods
         /// <summary>
         /// Internal method to make sure stream is ready after first being initialized.
         /// </summary>
@@ -269,7 +259,7 @@ namespace pdj.tiny7z.Common
         /// </summary>
         private bool iterateStream()
         {
-            // calc crc
+            // get crc and set size if it wasn't already
             CRCs[currentIndex] = internalStream.CRC;
             if (Sizes[currentIndex] == null)
                 Sizes[currentIndex] = currentSize;
@@ -294,5 +284,6 @@ namespace pdj.tiny7z.Common
 
             return internalStream != null;
         }
+        #endregion
     }
 }

@@ -1,47 +1,62 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
 using System.IO;
 
 namespace pdj.tiny7z.Compression
 {
-    public abstract class DecoderStream : Stream
+    abstract class DecoderStream : Stream
     {
-        public override bool CanRead => true;
+        public override bool CanRead
+        {
+            get { return true; }
+        }
 
-        public override bool CanSeek => false;
+        public override bool CanSeek
+        {
+            get { return false; }
+        }
 
-        public override bool CanWrite => false;
+        public override bool CanWrite
+        {
+            get { return false; }
+        }
 
         public override void Flush()
         {
-            throw new NotSupportedException();
+            throw new NotImplementedException();
         }
 
-        public override long Length => throw new NotSupportedException();
+        public override long Length
+        {
+            get { throw new NotImplementedException(); }
+        }
 
         public override long Position
         {
-            get => throw new NotSupportedException();
-            set => throw new NotSupportedException();
+            get { throw new NotImplementedException(); }
+            set { throw new NotImplementedException(); }
         }
 
         public override long Seek(long offset, SeekOrigin origin)
         {
-            throw new NotSupportedException();
+            throw new NotImplementedException();
         }
 
         public override void SetLength(long value)
         {
-            throw new NotSupportedException();
+            throw new NotImplementedException();
         }
 
         public override void Write(byte[] buffer, int offset, int count)
         {
-            throw new NotSupportedException();
+            throw new NotImplementedException();
         }
     }
 
     /*
-    internal static class DecoderStreamHelper
+    static class DecoderStreamHelper
     {
         private static int FindCoderIndexForOutStreamIndex(CFolder folderInfo, int outStreamIndex)
         {
@@ -50,35 +65,30 @@ namespace pdj.tiny7z.Compression
                 var coderInfo = folderInfo.Coders[coderIndex];
                 outStreamIndex -= coderInfo.NumOutStreams;
                 if (outStreamIndex < 0)
-                {
                     return coderIndex;
-                }
             }
 
             throw new InvalidOperationException("Could not link output stream to coder.");
         }
 
-        private static void FindPrimaryOutStreamIndex(CFolder folderInfo, out int primaryCoderIndex,
-                                                      out int primaryOutStreamIndex)
+        private static void FindPrimaryOutStreamIndex(CFolder folderInfo, out int primaryCoderIndex, out int primaryOutStreamIndex)
         {
             bool foundPrimaryOutStream = false;
             primaryCoderIndex = -1;
             primaryOutStreamIndex = -1;
 
             for (int outStreamIndex = 0, coderIndex = 0;
-                 coderIndex < folderInfo.Coders.Count;
-                 coderIndex++)
+                coderIndex < folderInfo.Coders.Count;
+                coderIndex++)
             {
                 for (int coderOutStreamIndex = 0;
-                     coderOutStreamIndex < folderInfo.Coders[coderIndex].NumOutStreams;
-                     coderOutStreamIndex++, outStreamIndex++)
+                    coderOutStreamIndex < folderInfo.Coders[coderIndex].NumOutStreams;
+                    coderOutStreamIndex++, outStreamIndex++)
                 {
                     if (folderInfo.FindBindPairForOutStream(outStreamIndex) < 0)
                     {
                         if (foundPrimaryOutStream)
-                        {
                             throw new NotSupportedException("Multiple output streams.");
-                        }
 
                         foundPrimaryOutStream = true;
                         primaryCoderIndex = coderIndex;
@@ -88,31 +98,22 @@ namespace pdj.tiny7z.Compression
             }
 
             if (!foundPrimaryOutStream)
-            {
                 throw new NotSupportedException("No output stream.");
-            }
         }
 
-        private static Stream CreateDecoderStream(Stream[] packStreams, long[] packSizes, Stream[] outStreams,
-                                                  CFolder folderInfo, int coderIndex, IPasswordProvider pass)
+        private static Stream CreateDecoderStream(Stream[] packStreams, long[] packSizes, Stream[] outStreams, CFolder folderInfo, int coderIndex, IPasswordProvider pass)
         {
             var coderInfo = folderInfo.Coders[coderIndex];
             if (coderInfo.NumOutStreams != 1)
-            {
                 throw new NotSupportedException("Multiple output streams are not supported.");
-            }
 
             int inStreamId = 0;
             for (int i = 0; i < coderIndex; i++)
-            {
                 inStreamId += folderInfo.Coders[i].NumInStreams;
-            }
 
             int outStreamId = 0;
             for (int i = 0; i < coderIndex; i++)
-            {
                 outStreamId += folderInfo.Coders[i].NumOutStreams;
-            }
 
             Stream[] inStreams = new Stream[coderInfo.NumInStreams];
 
@@ -124,20 +125,14 @@ namespace pdj.tiny7z.Compression
                     int pairedOutIndex = folderInfo.BindPairs[bindPairIndex].OutIndex;
 
                     if (outStreams[pairedOutIndex] != null)
-                    {
                         throw new NotSupportedException("Overlapping stream bindings are not supported.");
-                    }
 
                     int otherCoderIndex = FindCoderIndexForOutStreamIndex(folderInfo, pairedOutIndex);
-                    inStreams[i] = CreateDecoderStream(packStreams, packSizes, outStreams, folderInfo, otherCoderIndex,
-                                                       pass);
-
+                    inStreams[i] = CreateDecoderStream(packStreams, packSizes, outStreams, folderInfo, otherCoderIndex, pass);
                     //inStreamSizes[i] = folderInfo.UnpackSizes[pairedOutIndex];
 
                     if (outStreams[pairedOutIndex] != null)
-                    {
                         throw new NotSupportedException("Overlapping stream bindings are not supported.");
-                    }
 
                     outStreams[pairedOutIndex] = inStreams[i];
                 }
@@ -145,12 +140,9 @@ namespace pdj.tiny7z.Compression
                 {
                     int index = folderInfo.FindPackStreamArrayIndex(inStreamId);
                     if (index < 0)
-                    {
                         throw new NotSupportedException("Could not find input stream binding.");
-                    }
 
                     inStreams[i] = packStreams[index];
-
                     //inStreamSizes[i] = packSizes[index];
                 }
             }
@@ -159,18 +151,17 @@ namespace pdj.tiny7z.Compression
             return DecoderRegistry.CreateDecoderStream(coderInfo.MethodId, inStreams, coderInfo.Props, pass, unpackSize);
         }
 
-        internal static Stream CreateDecoderStream(Stream inStream, long startPos, long[] packSizes, CFolder folderInfo,
-                                                   IPasswordProvider pass)
+        internal static Stream CreateDecoderStream(Stream inStream, long startPos, long[] packSizes, CFolder folderInfo, IPasswordProvider pass)
         {
             if (!folderInfo.CheckStructure())
-            {
                 throw new NotSupportedException("Unsupported stream binding structure.");
-            }
 
+            // We have multiple views into the same stream which will be used by several threads - need to sync those.
+            object sync = new object();
             Stream[] inStreams = new Stream[folderInfo.PackStreams.Count];
             for (int j = 0; j < folderInfo.PackStreams.Count; j++)
             {
-                inStreams[j] = new BufferedSubStream(inStream, startPos, packSizes[j]);
+                inStreams[j] = new SyncStreamView(sync, inStream, startPos, packSizes[j]);
                 startPos += packSizes[j];
             }
 

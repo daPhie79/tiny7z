@@ -93,7 +93,7 @@ namespace pdj.tiny7z.Archive
 
             // set decompressor
             using (var inStream = new SubStream(stream, (long)packPos, (long)inSize))
-            using (var decoder = Compression.Registry.GetDecoderStream(SevenZipMethods.Supported[methodID], new Stream[] { inStream }, folder.CodersInfo[0].Properties, null, -1, (long)outSize))
+            using (var decoder = Compression.Registry.GetDecoderStream(SevenZipMethods.Supported[methodID], new Stream[] { inStream }, folder.CodersInfo[0].Properties, null, (long)outSize))
             {
                 Stream outStream = null;
                 // define output stream

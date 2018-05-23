@@ -1,23 +1,24 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace pdj.tiny7z.Compression.AES
+namespace pdj.tiny7z.Compression
 {
     internal class AesDecoderStream : DecoderStream
     {
         #region Variables
 
-        private readonly Stream mStream;
-        private readonly ICryptoTransform mDecoder;
-        private readonly byte[] mBuffer;
+        private Stream mStream;
+        private ICryptoTransform mDecoder;
+        private byte[] mBuffer;
         private long mWritten;
-        private readonly long mLimit;
+        private long mLimit;
         private int mOffset;
         private int mEnding;
         private int mUnderflow;
-        private bool isDisposed;
 
         #endregion
 
@@ -28,8 +29,10 @@ namespace pdj.tiny7z.Compression.AES
             mStream = input;
             mLimit = limit;
 
-            if (((uint) input.Length & 15) != 0)
-                throw new NotSupportedException("AES decoder does not support padding.");
+            // The 7z AES encoder/decoder classes do not perform padding, instead they require the input stream to provide a multiple of 16 bytes.
+            // If the exception below is thrown this means the 7z file is either corrupt or a newer 7z version has been published and we haven't updated yet.
+            if (((uint)input.Length & 15) != 0)
+                throw new NotSupportedException("7z requires AES streams to be properly padded.");
 
             int numCyclesPower;
             byte[] salt, seed;
@@ -52,11 +55,6 @@ namespace pdj.tiny7z.Compression.AES
         {
             try
             {
-                if (isDisposed)
-                {
-                    return;
-                }
-                isDisposed = true;
                 if (disposing)
                 {
                     mStream.Dispose();
@@ -71,24 +69,17 @@ namespace pdj.tiny7z.Compression.AES
 
         public override long Position
         {
-            get
-            {
-                return mWritten;
-            }
+            get { return mWritten; }
         }
 
         public override long Length
         {
-            get
-            {
-                return mLimit;
-            }
+            get { return mLimit; }
         }
 
         public override int Read(byte[] buffer, int offset, int count)
         {
-            if (count == 0
-                || mWritten == mLimit)
+            if (count == 0 || mWritten == mLimit)
                 return 0;
 
             if (mUnderflow > 0)
@@ -119,7 +110,7 @@ namespace pdj.tiny7z.Compression.AES
             // Currently this is handled by forcing an underflow if
             // the stream length is not a multiple of the block size.
             if (count > mLimit - mWritten)
-                count = (int) (mLimit - mWritten);
+                count = (int)(mLimit - mWritten);
 
             // We cannot transform less than 16 bytes into the target buffer,
             // but we also cannot return zero, so we need to handle this.
@@ -156,13 +147,13 @@ namespace pdj.tiny7z.Compression.AES
             int saltSize = (bt >> 7) & 1;
             int ivSize = (bt >> 6) & 1;
             if (info.Length == 1)
-                throw new InvalidOperationException();
+                throw new InvalidDataException();
 
             byte bt2 = info[1];
             saltSize += (bt2 >> 4);
             ivSize += (bt2 & 15);
             if (info.Length < 2 + saltSize + ivSize)
-                throw new InvalidOperationException();
+                throw new InvalidDataException();
 
             salt = new byte[saltSize];
             for (int i = 0; i < saltSize; i++)
@@ -176,7 +167,7 @@ namespace pdj.tiny7z.Compression.AES
                 throw new NotSupportedException();
         }
 
-        private byte[] InitKey(int mNumCyclesPower, byte[] salt, byte[] pass)
+        internal static byte[] InitKey(int mNumCyclesPower, byte[] salt, byte[] pass)
         {
             if (mNumCyclesPower == 0x3F)
             {
@@ -192,27 +183,7 @@ namespace pdj.tiny7z.Compression.AES
             }
             else
             {
-#if NETSTANDARD1_3
-                using (IncrementalHash sha = IncrementalHash.CreateHash(HashAlgorithmName.SHA256))
-                {
-                    byte[] counter = new byte[8];
-                    long numRounds = 1L << mNumCyclesPower;
-                    for (long round = 0; round < numRounds; round++)
-                    {
-                        sha.AppendData(salt, 0, salt.Length);
-                        sha.AppendData(pass, 0, pass.Length);
-                        sha.AppendData(counter, 0, 8);
-
-                        // This mirrors the counter so we don't have to convert long to byte[] each round.
-                        // (It also ensures the counter is little endian, which BitConverter does not.)
-                        for (int i = 0; i < 8; i++)
-                            if (++counter[i] != 0)
-                                break;
-                    }
-                    return sha.GetHashAndReset();
-                }
-#else
-                using (var sha = SHA256.Create())
+                using (var sha = System.Security.Cryptography.SHA256.Create())
                 {
                     byte[] counter = new byte[8];
                     long numRounds = 1L << mNumCyclesPower;
@@ -232,7 +203,6 @@ namespace pdj.tiny7z.Compression.AES
                     sha.TransformFinalBlock(counter, 0, 0);
                     return sha.Hash;
                 }
-#endif
             }
         }
 

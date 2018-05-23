@@ -1,17 +1,19 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Text;
 
-namespace pdj.tiny7z.Compression.BCJ2
+namespace pdj.tiny7z.Compression
 {
-    internal class Bcj2DecoderStream : DecoderStream
+    class Bcj2DecoderStream : DecoderStream
     {
-        private const int kNumTopBits = 24;
-        private const uint kTopValue = (1 << kNumTopBits);
+        const int kNumTopBits = 24;
+        const uint kTopValue = (1 << kNumTopBits);
 
         private class RangeDecoder
         {
-            internal readonly Stream mStream;
+            internal Stream mStream;
             internal uint Range;
             internal uint Code;
 
@@ -20,18 +22,14 @@ namespace pdj.tiny7z.Compression.BCJ2
                 mStream = stream;
                 Range = 0xFFFFFFFF;
                 for (int i = 0; i < 5; i++)
-                {
                     Code = (Code << 8) | ReadByte();
-                }
             }
 
             public byte ReadByte()
             {
                 int bt = mStream.ReadByte();
                 if (bt < 0)
-                {
                     throw new EndOfStreamException();
-                }
 
                 return (byte)bt;
             }
@@ -58,14 +56,14 @@ namespace pdj.tiny7z.Compression.BCJ2
 
             private void UpdateModel(uint symbol)
             {
+                /*
+                Prob -= (Prob + ((symbol - 1) & ((1 << numMoveBits) - 1))) >> numMoveBits;
+                Prob += (1 - symbol) << (kNumBitModelTotalBits - numMoveBits);
+                */
                 if (symbol == 0)
-                {
                     Prob += (kBitModelTotal - Prob) >> numMoveBits;
-                }
                 else
-                {
                     Prob -= (Prob) >> numMoveBits;
-                }
             }
 
             public uint Decode(RangeDecoder decoder)
@@ -82,40 +80,40 @@ namespace pdj.tiny7z.Compression.BCJ2
                     }
                     return 0;
                 }
-                decoder.Range -= newBound;
-                decoder.Code -= newBound;
-                Prob -= Prob >> numMoveBits;
-                if (decoder.Range < kTopValue)
+                else
                 {
-                    decoder.Code = (decoder.Code << 8) | decoder.ReadByte();
-                    decoder.Range <<= 8;
+                    decoder.Range -= newBound;
+                    decoder.Code -= newBound;
+                    Prob -= Prob >> numMoveBits;
+                    if (decoder.Range < kTopValue)
+                    {
+                        decoder.Code = (decoder.Code << 8) | decoder.ReadByte();
+                        decoder.Range <<= 8;
+                    }
+                    return 1;
                 }
-                return 1;
             }
         }
 
-        private readonly Stream mMainStream;
-        private readonly Stream mCallStream;
-        private readonly Stream mJumpStream;
-        private readonly RangeDecoder mRangeDecoder;
-        private readonly StatusDecoder[] mStatusDecoder;
+        private Stream mMainStream;
+        private Stream mCallStream;
+        private Stream mJumpStream;
+        private RangeDecoder mRangeDecoder;
+        private StatusDecoder[] mStatusDecoder;
         private long mWritten;
-        private readonly IEnumerator<byte> mIter;
+        private long mLimit;
+        private IEnumerator<byte> mIter;
         private bool mFinished;
-        private bool isDisposed;
 
         public Bcj2DecoderStream(Stream[] streams, byte[] info, long limit)
         {
             if (info != null && info.Length > 0)
-            {
                 throw new NotSupportedException();
-            }
 
             if (streams.Length != 4)
-            {
                 throw new NotSupportedException();
-            }
 
+            mLimit = limit;
             mMainStream = streams[0];
             mCallStream = streams[1];
             mJumpStream = streams[2];
@@ -123,61 +121,37 @@ namespace pdj.tiny7z.Compression.BCJ2
 
             mStatusDecoder = new StatusDecoder[256 + 2];
             for (int i = 0; i < mStatusDecoder.Length; i++)
-            {
                 mStatusDecoder[i] = new StatusDecoder();
-            }
 
             mIter = Run().GetEnumerator();
-        }
-
-        protected override void Dispose(bool disposing)
-        {
-            if (isDisposed)
-            {
-                return;
-            }
-            isDisposed = true;
-            base.Dispose(disposing);
-            mMainStream.Dispose();
-            mCallStream.Dispose();
-            mJumpStream.Dispose();
         }
 
         private static bool IsJcc(byte b0, byte b1)
         {
             return b0 == 0x0F
-                   && (b1 & 0xF0) == 0x80;
+                && (b1 & 0xF0) == 0x80;
         }
 
         private static bool IsJ(byte b0, byte b1)
         {
             return (b1 & 0xFE) == 0xE8
-                   || IsJcc(b0, b1);
+                || IsJcc(b0, b1);
         }
 
         private static int GetIndex(byte b0, byte b1)
         {
             if (b1 == 0xE8)
-            {
                 return b0;
-            }
-            if (b1 == 0xE9)
-            {
+            else if (b1 == 0xE9)
                 return 256;
-            }
-            return 257;
+            else
+                return 257;
         }
-
-        public override bool CanRead => true;
-        public override bool CanSeek => false;
-        public override bool CanWrite => false;
 
         public override int Read(byte[] buffer, int offset, int count)
         {
             if (count == 0 || mFinished)
-            {
                 return 0;
-            }
 
             for (int i = 0; i < count; i++)
             {
@@ -207,26 +181,19 @@ namespace pdj.tiny7z.Compression.BCJ2
                 {
                     int tmp = mMainStream.ReadByte();
                     if (tmp < 0)
-                    {
                         yield break;
-                    }
 
                     b = (byte)tmp;
-                    mWritten++;
-                    yield return b;
+                    mWritten++; yield return b;
                     if (IsJ(prevByte, b))
-                    {
                         break;
-                    }
 
                     prevByte = b;
                 }
 
                 processedBytes += i;
                 if (i == kBurstSize)
-                {
                     continue;
-                }
 
                 if (mStatusDecoder[GetIndex(prevByte, b)].Decode(mRangeDecoder) == 1)
                 {
@@ -237,23 +204,17 @@ namespace pdj.tiny7z.Compression.BCJ2
                     {
                         int b0 = s.ReadByte();
                         if (b0 < 0)
-                        {
                             throw new EndOfStreamException();
-                        }
 
                         src <<= 8;
                         src |= (uint)b0;
                     }
 
                     uint dest = src - (uint)(mWritten + 4);
-                    mWritten++;
-                    yield return (byte)dest;
-                    mWritten++;
-                    yield return (byte)(dest >> 8);
-                    mWritten++;
-                    yield return (byte)(dest >> 16);
-                    mWritten++;
-                    yield return (byte)(dest >> 24);
+                    mWritten++; yield return (byte)dest;
+                    mWritten++; yield return (byte)(dest >> 8);
+                    mWritten++; yield return (byte)(dest >> 16);
+                    mWritten++; yield return (byte)(dest >> 24);
                     prevByte = (byte)(dest >> 24);
                     processedBytes += 4;
                 }

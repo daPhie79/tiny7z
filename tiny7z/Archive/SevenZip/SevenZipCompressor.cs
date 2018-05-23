@@ -208,7 +208,7 @@ namespace pdj.tiny7z.Archive
         #region Private methods
         void compressFilesSolid(ulong numStreams, Dictionary<ulong, ulong> streamToFileIndex)
         {
-            var sc = new z7StreamsCompressor(stream);
+            var sc = new SevenZipStreamsCompressor(stream);
             sc.Method = Compression.Registry.Method.LZMA;
 
             Trace.TraceInformation($"Compressing `{numStreams} files` into a solid block...");
@@ -217,7 +217,7 @@ namespace pdj.tiny7z.Archive
             var inputStream = new MultiFileStream(
                 FileAccess.Read,
                 streamToFileIndex.Select(sfi => _Files[(int)sfi.Value].Source).ToArray());
-            z7StreamsCompressor.PackedStream cs = sc.Compress(inputStream);
+            SevenZipStreamsCompressor.PackedStream cs = sc.Compress(inputStream);
 
             // build headers
             var streamsInfo = this.header.RawHeader.MainStreamsInfo;
@@ -259,10 +259,11 @@ namespace pdj.tiny7z.Archive
 
         void compressFilesNonSolid(ulong numStreams, Dictionary<ulong, ulong> streamToFileIndex)
         {
-            var sc = new z7StreamsCompressor(stream);
+            var sc = new SevenZipStreamsCompressor(stream);
+            sc.Method = Compression.Registry.Method.LZMA;
 
             // actual compression (into a single packed stream per file)
-            z7StreamsCompressor.PackedStream[] css = new z7StreamsCompressor.PackedStream[numStreams];
+            SevenZipStreamsCompressor.PackedStream[] css = new SevenZipStreamsCompressor.PackedStream[numStreams];
             ulong numPackStreams = 0;
             for (ulong i = 0; i < numStreams; ++i)
             {
@@ -313,11 +314,12 @@ namespace pdj.tiny7z.Archive
             if (CompressHeader)
             {
                 // get compressor and default codec
-                var sc = new z7StreamsCompressor(stream);
+                var sc = new SevenZipStreamsCompressor(stream);
+                sc.Method = Compression.Registry.Method.LZMA;
 
                 // compress
                 headerStream.Position = 0;
-                z7StreamsCompressor.PackedStream cs = sc.Compress(headerStream);
+                SevenZipStreamsCompressor.PackedStream cs = sc.Compress(headerStream);
 
                 // create encoded header
                 SevenZipHeader.StreamsInfo headerStreamsInfo = new SevenZipHeader.StreamsInfo()

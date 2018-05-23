@@ -25,6 +25,7 @@ namespace pdj.tiny7z
             catch { }
 
             var ctl = new ConsoleTraceListener();
+            Trace.Listeners.Clear();
             Trace.Listeners.Add(ctl);
             Trace.Listeners.Add(new TextWriterTraceListener(
                 Path.Combine(Program.InternalBase, "debuglog.txt")));
@@ -35,36 +36,12 @@ namespace pdj.tiny7z
             try
             {
                 if (Directory.Exists(Path.Combine(InternalBase, "test")))
-                    Directory.Delete(Path.Combine(InternalBase, "test"), true);
-                System.Threading.Thread.Sleep(10);
-                Directory.CreateDirectory(Path.Combine(InternalBase, "test"));
-
-                /*
-                string sourceFileName = Path.Combine(InternalBase, "OutputTest.7z");
-                SevenZipArchive f2 = new SevenZipArchive(File.OpenRead(sourceFileName), FileAccess.Read);
-                var ext = f2.Extractor();
-                f2.Dump();
-                ext.OverwriteExistingFiles = true;
-                ext.ExtractArchive(Path.Combine(InternalBase, "test"));
-                */
-
-                /*
-                var ofd = new OpenFileDialog();
-                if (ofd.ShowDialog() == DialogResult.OK)
                 {
-                    if (!File.Exists(ofd.FileName))
-                        throw new ApplicationException("File not found.");
-
-                    z7Archive f = new z7Archive(File.Create(ofd.FileName + ".7z"), FileAccess.Write);
-                    z7Compressor cmp = (z7Compressor)f.Compressor();
-                    cmp.Solid = true;
-                    cmp.CompressHeader = false;
-                    cmp.AddFile(ofd.FileName);
-                    cmp.Finalize();
-                    cmp = null;
-                    f.Close();
+                    System.Threading.Thread.Sleep(100);
+                    Directory.Delete(Path.Combine(InternalBase, "test"), true);
+                    System.Threading.Thread.Sleep(100);
                 }
-                */
+                Directory.CreateDirectory(Path.Combine(InternalBase, "test"));
 
                 FolderBrowserDialog fbd = new FolderBrowserDialog();
                 if (fbd.ShowDialog() == DialogResult.OK)
@@ -75,8 +52,8 @@ namespace pdj.tiny7z
                     string destFileName = Path.Combine(InternalBase, "OutputTest.7z");
                     SevenZipArchive f = new SevenZipArchive(File.Create(destFileName), FileAccess.Write);
                     var cmp = f.Compressor();
-                    (cmp as SevenZipCompressor).Solid = true;
-                    (cmp as SevenZipCompressor).CompressHeader = false;
+                    (cmp as SevenZipCompressor).Solid = false;
+                    (cmp as SevenZipCompressor).CompressHeader = true;
 
                     cmp.AddDirectory(fbd.SelectedPath);
                     cmp.Finalize();
@@ -94,6 +71,7 @@ namespace pdj.tiny7z
                 SevenZipArchive f2 = new SevenZipArchive(File.OpenRead(sourceFileName), FileAccess.Read);
                 f2.Dump();
                 var ext = f2.Extractor();
+                (ext as SevenZipExtractor).Dump();
                 ext.OverwriteExistingFiles = true;
                 ext.ExtractArchive(Path.Combine(InternalBase, "test"));
             }

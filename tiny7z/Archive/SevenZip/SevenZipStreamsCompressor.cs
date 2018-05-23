@@ -1,11 +1,15 @@
 ﻿using pdj.tiny7z.Common;
+using ManagedLzma.LZMA;
+using ManagedLzma.LZMA.Master;
 using System;
 using System.IO;
 using System.Linq;
+using System.Reflection;
+using System.Runtime.InteropServices;
 
 namespace pdj.tiny7z.Archive
 {
-    class z7StreamsCompressor
+    class SevenZipStreamsCompressor
     {
         public class PackedStream
         {
@@ -22,10 +26,10 @@ namespace pdj.tiny7z.Archive
 
         Stream stream;
 
-        public z7StreamsCompressor(Stream stream)
+        public SevenZipStreamsCompressor(Stream stream)
         {
             this.stream = stream;
-            Method = Compression.Registry.Method.LZMA;
+            this.Method = null;
         }
 
         public PackedStream Compress(Stream inputStream)
@@ -70,18 +74,47 @@ namespace pdj.tiny7z.Archive
             using (var inCRCStream = new CRCStream(inputStream))
             using (var outCRCStream = new CRCStream(stream))
             {
-                // get and setup compressor
-                using (var encoder = new Compression.LZMA.LzmaStream(new Compression.LZMA.LzmaEncoderProperties(), false, outCRCStream))
-                {
-                    // keep settings in header
-                    var properties = encoder.Properties;
-                    ps.Folder.CodersInfo[0].Attributes |= (Byte)SevenZipHeader.CoderInfo.AttrHasAttributes;
-                    ps.Folder.CodersInfo[0].Properties = properties.ToArray();
-                    ps.Folder.CodersInfo[0].PropertiesSize = (UInt64)ps.Folder.CodersInfo[0].Properties.Length;
+                LZMA.CLzmaEnc encoder = LZMA.LzmaEnc_Create(LZMA.ISzAlloc.SmallAlloc);
+                LZMA.CLzmaEncProps encoderProps = LZMA.CLzmaEncProps.LzmaEncProps_Init();
+                LZMA.CSeqOutStream outputHelper;
+                LZMA.CSeqInStream inputHelper;
+                LZMA.SRes res = LZMA.SZ_OK;
 
-                    // go!
-                    Util.TransferTo(inCRCStream, encoder);
-                }
+                // prepare encoder settings
+                res = encoder.LzmaEnc_SetProps(encoderProps);
+                if (res != LZMA.SZ_OK)
+                    throw new SevenZipException("Error setting LZMA encoder properties.");
+                byte[] properties = new byte[LZMA.LZMA_PROPS_SIZE];
+                long binarySettingsSize = LZMA.LZMA_PROPS_SIZE;
+                res = encoder.LzmaEnc_WriteProperties(properties, ref binarySettingsSize);
+                if (res != LZMA.SZ_OK)
+                    throw new SevenZipException("Error writing LZMA encoder properties.");
+                if (binarySettingsSize != LZMA.LZMA_PROPS_SIZE)
+                    throw new NotSupportedException();
+
+                // read/write helpers
+                outputHelper = new LZMA.CSeqOutStream(
+                    (P<byte> buf, long sz) => {
+                        outCRCStream.Write(buf.mBuffer, buf.mOffset, checked((int)sz));
+                    });
+
+                inputHelper = new LZMA.CSeqInStream(
+                    (P<byte> buf, long sz) => {
+                        return inCRCStream.Read(buf.mBuffer, buf.mOffset, checked((int)sz));
+                    });
+
+                // encode
+                res = encoder.LzmaEnc_Encode(outputHelper, inputHelper, null, LZMA.ISzAlloc.SmallAlloc, LZMA.ISzAlloc.BigAlloc);
+                if (res != LZMA.SZ_OK)
+                    throw new InvalidOperationException();
+
+                // cleanup
+                encoder.LzmaEnc_Destroy(LZMA.ISzAlloc.SmallAlloc, LZMA.ISzAlloc.BigAlloc);
+
+                // keep settings in header
+                ps.Folder.CodersInfo[0].Attributes |= (Byte)SevenZipHeader.CoderInfo.AttrHasAttributes;
+                ps.Folder.CodersInfo[0].Properties = properties.ToArray();
+                ps.Folder.CodersInfo[0].PropertiesSize = (UInt64)ps.Folder.CodersInfo[0].Properties.Length;
 
                 // store sizes and checksums
                 ps.Folder.UnPackSizes[0] = (UInt64)(inputStream.Position - inStreamStartOffset);
