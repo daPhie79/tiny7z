@@ -105,6 +105,22 @@ namespace pdj.tiny7z.Archive
         }
 
         /// <summary>
+        /// Set this to true to compress all files in a single block (if archive supports it).
+        /// </summary>
+        bool Solid
+        {
+            get; set;
+        }
+
+        /// <summary>
+        /// Set this to true to compress header as well (if archive supports it).
+        /// </summary>
+        bool CompressHeader
+        {
+            get; set;
+        }
+
+        /// <summary>
         /// Adds a directory content to current archive.
         /// </summary>
         /// <param name="inputDirectory">Input directory to scan files from.</param>

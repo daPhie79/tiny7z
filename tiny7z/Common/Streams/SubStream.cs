@@ -67,11 +67,12 @@ namespace pdj.tiny7z.Common
 
             if (internalStream is Stream)
             {
-                internalStream.Position = currentOffset;
+                if (internalStream.Position != currentOffset)
+                    internalStream.Position = currentOffset;
                 if (currentOffset + count > startOffset + windowSize)
                 {
                     int newCount = (int)((startOffset + windowSize) - currentOffset);
-                    Trace.TraceWarning($"End of substream window reached, {newCount} of {count} bytes have been written.");
+                    Trace.TraceWarning($"End of substream window reached, {newCount} of {count} bytes written.");
 
                     count = newCount;
                 }
@@ -87,8 +88,9 @@ namespace pdj.tiny7z.Common
         {
             if (internalStream is Stream)
             {
-                internalStream.Position = currentOffset;
-                if (internalStream.Position < startOffset + windowSize)
+                if (internalStream.Position != currentOffset)
+                    internalStream.Position = currentOffset;
+                if (currentOffset < startOffset + windowSize)
                 {
                     internalStream.WriteByte(value);
                     ++currentOffset;
@@ -110,7 +112,8 @@ namespace pdj.tiny7z.Common
             int r = 0;
             if (internalStream is Stream)
             {
-                internalStream.Position = currentOffset;
+                if (internalStream.Position != currentOffset)
+                    internalStream.Position = currentOffset;
                 if (currentOffset + count > startOffset + windowSize)
                     count = (int)((startOffset + windowSize) - currentOffset);
                 if (count > 0)
@@ -127,7 +130,8 @@ namespace pdj.tiny7z.Common
             int r = -1;
             if (internalStream is Stream)
             {
-                internalStream.Position = currentOffset;
+                if (internalStream.Position != currentOffset)
+                    internalStream.Position = currentOffset;
                 if (currentOffset < startOffset + windowSize)
                 {
                     r = internalStream.ReadByte();
