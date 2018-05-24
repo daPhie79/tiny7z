@@ -32,6 +32,8 @@ namespace pdj.tiny7z
 
             // try compression
 
+            DateTime now;
+            TimeSpan ela;
             try
             {
                 if (Directory.Exists(Path.Combine(InternalBase, "test")))
@@ -79,9 +81,10 @@ namespace pdj.tiny7z
                     (cmp as SevenZipCompressor).CompressHeader = false;
 
                     cmp.AddDirectory(fbd.SelectedPath);
-                    cmp.Finalize();
+                    now = DateTime.Now; cmp.Finalize(); ela = DateTime.Now.Subtract(now);
                     f.Dump();
                     f.Close();
+                    Trace.TraceInformation($"Compression done {ela.TotalMilliseconds}ms.");
                 }
                 else
                 {
@@ -95,7 +98,8 @@ namespace pdj.tiny7z
                 f2.Dump();
                 var ext = f2.Extractor();
                 ext.OverwriteExistingFiles = true;
-                ext.ExtractArchive(Path.Combine(InternalBase, "test"));
+                now = DateTime.Now; ext.ExtractArchive(Path.Combine(InternalBase, "test")); ela = DateTime.Now.Subtract(now);
+                Trace.TraceInformation($"Decompression done {ela.TotalMilliseconds}ms.");
             }
             catch (Exception ex)
             {
