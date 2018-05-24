@@ -72,6 +72,8 @@ namespace pdj.tiny7z.Compression
             }
         }
 
+        public override long Length => mLength;
+
         public override int ReadByte()
         {
             return mInputOffset < mInputEnding ? mInputBuffer[mInputOffset++] : ReadByteSlow();
