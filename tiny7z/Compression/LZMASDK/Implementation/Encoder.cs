@@ -1,7 +1,4 @@
-// LzmaEncoder.cs
-
 using System;
-using pdj.tiny7z.Compress;
 
 namespace SevenZip.Compression.LZMA
 {

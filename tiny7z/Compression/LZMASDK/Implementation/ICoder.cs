@@ -1,6 +1,6 @@
 using System;
 
-namespace pdj.tiny7z.Compress
+namespace SevenZip.Compression.LZMA
 {
 	/// <summary>
 	/// The exception that is thrown when an error in input stream occurs during decoding.

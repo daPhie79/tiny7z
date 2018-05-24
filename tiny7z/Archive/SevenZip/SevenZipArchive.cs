@@ -207,6 +207,7 @@ namespace pdj.tiny7z.Archive
                     (new SevenZipStreamsExtractor(stream, Header.EncodedHeader)).Extract(0, newHeaderStream);
 
                     Trace.TraceInformation("Parsing decompressed header.");
+                    Trace.TraceInformation($"Header size: {newHeaderStream.Length} bytes.");
                     newHeaderStream.Position = 0;
                     SevenZipHeader
                         newHeader = new SevenZipHeader(newHeaderStream);
