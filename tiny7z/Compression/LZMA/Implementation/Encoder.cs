@@ -299,7 +299,7 @@ namespace SevenZip.Compression.LZMA
 			public bool IsShortRep() { return (BackPrev == 0); }
 		};
 		Optimal[] _optimum = new Optimal[kNumOpts];
-		LZ.IMatchFinder _matchFinder = null;
+		LZ.BinTree _matchFinder = null; // LZ.IMatchFinder _matchFinder = null;
 		RangeCoder.Encoder _rangeEncoder = new RangeCoder.Encoder();
 
 		RangeCoder.BitEncoder[] _isMatch = new RangeCoder.BitEncoder[Base.kNumStates << Base.kNumPosStatesBitsMax];

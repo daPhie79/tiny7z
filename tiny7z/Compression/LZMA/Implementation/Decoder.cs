@@ -255,7 +255,7 @@ namespace SevenZip.Compression.LZMA
         UInt64 nowPos64;
         UInt64 outSize64;
 
-        public void CodeStart(System.IO.Stream inStream, System.IO.Stream bufferStream, Int64 inSize, Int64 outSize)
+        public void Begin(System.IO.Stream inStream, System.IO.Stream bufferStream, Int64 inSize, Int64 outSize)
         {
             Init(inStream, m_BufferStream = bufferStream);
 
@@ -276,11 +276,8 @@ namespace SevenZip.Compression.LZMA
             }
         }
 
-        public void CodeContinue(UInt64 minimumCodeSize)
+        public void Code(UInt64 minimumCodeSize)
         {
-            if (minimumCodeSize < m_BlockSize)
-                minimumCodeSize = m_BlockSize;
-
             UInt64 targetPos64 = nowPos64 + minimumCodeSize;
             if (targetPos64 > outSize64)
                 targetPos64 = outSize64;
@@ -378,9 +375,8 @@ namespace SevenZip.Compression.LZMA
             m_OutWindow.Flush();
         }
 
-        public void CodeFinish()
+        public void Cleanup()
         {
-            //m_OutWindow.Flush();
             m_OutWindow.ReleaseStream();
             m_RangeDecoder.ReleaseStream();
         }

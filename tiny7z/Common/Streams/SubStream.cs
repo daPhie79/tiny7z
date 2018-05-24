@@ -67,7 +67,8 @@ namespace pdj.tiny7z.Common
 
             if (internalStream is Stream)
             {
-                internalStream.Position = currentOffset;
+                if (internalStream.Position != currentOffset)
+                    internalStream.Position = currentOffset;
                 if (currentOffset + count > startOffset + windowSize)
                 {
                     int newCount = (int)((startOffset + windowSize) - currentOffset);
@@ -87,7 +88,8 @@ namespace pdj.tiny7z.Common
         {
             if (internalStream is Stream)
             {
-                internalStream.Position = currentOffset;
+                if (internalStream.Position != currentOffset)
+                    internalStream.Position = currentOffset;
                 if (internalStream.Position < startOffset + windowSize)
                 {
                     internalStream.WriteByte(value);
@@ -110,7 +112,8 @@ namespace pdj.tiny7z.Common
             int r = 0;
             if (internalStream is Stream)
             {
-                internalStream.Position = currentOffset;
+                if (internalStream.Position != currentOffset)
+                    internalStream.Position = currentOffset;
                 if (currentOffset + count > startOffset + windowSize)
                     count = (int)((startOffset + windowSize) - currentOffset);
                 if (count > 0)
@@ -127,7 +130,8 @@ namespace pdj.tiny7z.Common
             int r = -1;
             if (internalStream is Stream)
             {
-                internalStream.Position = currentOffset;
+                if (internalStream.Position != currentOffset)
+                    internalStream.Position = currentOffset;
                 if (currentOffset < startOffset + windowSize)
                 {
                     r = internalStream.ReadByte();
