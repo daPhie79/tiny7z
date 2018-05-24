@@ -195,8 +195,6 @@ namespace pdj.tiny7z.Archive
                 currentPackPos += packedSize;
             }
 
-            Util.Dump(packedStreams);
-
             // create output streams
             Stream[] outputStreams = new Stream[folder.NumOutStreamsTotal];
 

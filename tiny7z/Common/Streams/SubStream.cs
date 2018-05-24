@@ -58,6 +58,8 @@ namespace pdj.tiny7z.Common
 
         public override void Write(byte[] array, int offset, int count)
         {
+            if (array == null)
+                throw new ArgumentNullException(nameof(array));
             if (offset < 0 || offset >= array.Length)
                 throw new ArgumentOutOfRangeException(nameof(offset));
             if (count <= 0 || count + offset > array.Length)
@@ -98,6 +100,8 @@ namespace pdj.tiny7z.Common
 
         public override int Read(byte[] array, int offset, int count)
         {
+            if (array == null)
+                throw new ArgumentNullException(nameof(array));
             if (offset < 0 || offset >= array.Length)
                 throw new ArgumentOutOfRangeException(nameof(offset));
             if (count <= 0 || count + offset > array.Length)
