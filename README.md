@@ -6,20 +6,20 @@ tiny7z is a native C# SevenZip 7zip .7z file format archive reader/writer
 ## Objective
 
 - Provide a native code only C# library that supports writing to .7zip archives.
-- Goal achieved.
 
 ## Features
 
 - Read .7zip archives, with uncompressed or compressed headers.
-- Write to .7zip archives, using LZMA codec, in a single block, or one block per file.
+- Write to .7zip archives, using LZMA codec, in a single block (solid), or one block per file.
 - Support LZMA, LZMA2, PPMd decoders.
+- Support BCJ and BCJ2 decoder filters.
 
 ## Current limitations
 
 *They are plenty unfortunately, but this library is still a huge step forward for .7z support in native C#*
 
-- No filter support yet.
-- De/compression is slower than native 7z.dll (however this is due to pure C# implementation of LZMA SDK).
+- De/compression are slower than native 7z.dll (however this is due to pure C# implementation of LZMA SDK).
+- AES decoder is in place, but no support for password yet.
 
 ---
 
