@@ -290,6 +290,15 @@ namespace pdj.tiny7z.Archive
                 NumFolders = numStreams,
                 Folders = new SevenZipHeader.Folder[numStreams]
             };
+
+            streamsInfo.SubStreamsInfo = new SevenZipHeader.SubStreamsInfo(streamsInfo.UnPackInfo)
+            {
+                NumUnPackStreamsInFolders = Enumerable.Repeat((UInt64)1, (int)numStreams).ToArray(),
+                NumUnPackStreamsTotal = numStreams,
+                UnPackSizes = new List<UInt64>((int)numStreams),
+                Digests = new SevenZipHeader.Digests(numStreams)
+            };
+
             for (ulong i = 0, k = 0; i < numStreams; ++i)
             {
                 for (ulong j = 0; j < css[i].NumStreams; ++j, ++k)
@@ -297,6 +306,9 @@ namespace pdj.tiny7z.Archive
                     streamsInfo.PackInfo.Sizes[k] = css[i].Sizes[j];
                     streamsInfo.PackInfo.Digests.CRCs[k] = css[i].CRCs[j];
                 }
+                streamsInfo.SubStreamsInfo.UnPackSizes.Add((UInt64)css[i].Folder.GetUnPackSize());
+                streamsInfo.SubStreamsInfo.Digests.CRCs[i] = css[i].Folder.UnPackCRC;
+                css[i].Folder.UnPackCRC = null;
                 streamsInfo.UnPackInfo.Folders[i] = css[i].Folder;
             }
         }
