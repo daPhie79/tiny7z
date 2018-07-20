@@ -16,17 +16,19 @@ tiny7z is a native C# SevenZip 7zip .7z file format archive reader/writer
 
 ## Current limitations
 
-*They are plenty unfortunately, but this library is still a huge step forward for .7z support in native C#*
+*They are plenty unfortunately, but this library is still a huge step forward for compact .7z support in native C#*
 
-- De/compression are slower than native 7z.dll (however this is due to pure C# implementation of LZMA SDK).
 - AES decoder is in place, but no support for password yet.
+- LZMA Compression is slower than native 7z.dll (due to the pure C# implementation of LZMA SDK).
+- LZMA Decompression is slower than native 7z.dll, and also than Igor Pavlov's official C# LZMA decoder, because while Tobias Käs' version of the decompressor is slower than Igor Pavlov's, his encoder is faster, thus since the goal of this library is to be compact and to complete SharpCompress by providing a native C# encoder, I have kept code simpler by only implementing one compression library and priorizing compression speed.
 
 ---
 
 ## Links
 
 - [https://www.7-zip.org/sdk.html] (LZMA SDK Development Kit) by Igor Pavlov
-- [https://github.com/adamhathcock/sharpcompress] (Fully managed C# library) SharpCompress
+- [https://github.com/adamhathcock/sharpcompress] (SharpCompress) by Adam Hathcock
+- [https://github.com/weltkante/managed-lzma] (C# implementation of LZMA and 7zip) by Tobias Käs
 
 ---
 
