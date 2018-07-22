@@ -7,7 +7,7 @@ using System.Runtime.InteropServices;
 
 namespace pdj.tiny7z.Archive
 {
-    public class SevenZipArchive : Archive
+    public class SevenZipArchive : Archive, IDisposable
     {
         /// <summary>
         /// 7zip file signature
@@ -109,6 +109,11 @@ namespace pdj.tiny7z.Archive
             }
         }
 
+        public void Dispose()
+        {
+            Close();
+        }
+
         /// <summary>
         /// Returns an extractor object to retrieve files from
         /// </summary>
@@ -129,7 +134,12 @@ namespace pdj.tiny7z.Archive
 
         public void Close()
         {
-            this.stream.Close();
+            if (this.stream != null)
+            {
+                this.stream.Close();
+                this.stream.Dispose();
+                this.stream = null;
+            }
         }
 
         /// <summary>
