@@ -147,8 +147,7 @@ namespace pdj.tiny7z.Archive
         /// </summary>
         public void Dump()
         {
-            string json = Newtonsoft.Json.JsonConvert.SerializeObject(Header, Newtonsoft.Json.Formatting.Indented);
-            Trace.WriteLine(json);
+            // TODO
         }
 
         /// <summary>

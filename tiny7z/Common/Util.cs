@@ -86,10 +86,7 @@ namespace pdj.tiny7z.Common
 
         public static void Dump(object o)
         {
-            string json = Newtonsoft.Json.JsonConvert.SerializeObject(o, Newtonsoft.Json.Formatting.Indented);
-            System.Diagnostics.Trace.WriteLine(json);
+
         }
-
     }
-
 }

@@ -63,8 +63,7 @@ namespace pdj.tiny7z.Archive
 
         public void Dump()
         {
-            string json = Newtonsoft.Json.JsonConvert.SerializeObject(_Files, Newtonsoft.Json.Formatting.Indented);
-            Trace.WriteLine(json);
+            // TODO
         }
 
         public IExtractor ExtractArchive(string outputDirectory)
