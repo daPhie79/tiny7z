@@ -33,23 +33,33 @@ namespace pdj.tiny7z.Common
             }
         }
 
-        public static uint Calculate(byte[] data)
+        public static uint Calculate(byte data, uint crc = 0xffffffff)
         {
-            uint crc = 0xffffffff;
-            for (int i = 0; i < data.Length; ++i)
+            byte index = (byte)(((crc) & 0xff) ^ data);
+            return (uint)((crc >> 8) ^ Table[index]);
+        }
+
+        public static uint Calculate(byte[] data, int offset = 0, int count = -1, uint crc = 0xffffffff)
+        {
+            if (count == -1)
+                count = data.Length - offset;
+
+            if (count > 0)
             {
-                byte index = (byte)(((crc) & 0xff) ^ data[i]);
-                crc = (uint)((crc >> 8) ^ Table[index]);
+                for (int i = 0; i < count; ++i)
+                {
+                    byte index = (byte)(((crc) & 0xff) ^ data[offset + i]);
+                    crc = (uint)((crc >> 8) ^ Table[index]);
+                }
             }
             return ~crc;
         }
 
-        public static uint Calculate(Stream stream)
+        public static uint Calculate(Stream stream, uint crc = 0xffffffff)
         {
             int bufferSize = 1048576;
             byte[] buffer = new byte[bufferSize];
 
-            uint crc = 0xffffffff;
             long r = 0;
             while ((r = stream.Read(buffer, 0, bufferSize)) > 0)
             {

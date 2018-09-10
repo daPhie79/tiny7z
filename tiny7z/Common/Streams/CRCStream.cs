@@ -68,24 +68,15 @@ namespace pdj.tiny7z.Common
         {
             int r = internalStream.Read(buffer, offset, count);
             if (r > 0)
-            {
-                for (int i = 0; i < r; ++i)
-                {
-                    byte index = (byte)(((crc) & 0xff) ^ buffer[offset + i]);
-                    crc = (uint)((crc >> 8) ^ Common.CRC.Table[index]);
-                }
-            }
+                crc = Common.CRC.Calculate(buffer, offset, r, crc);
             return r;
         }
 
         public override int ReadByte()
         {
-            int y = base.ReadByte();
+            int y = internalStream.ReadByte();
             if (y != -1)
-            {
-                byte index = (byte)(((crc) & 0xff) ^ y);
-                crc = (uint)((crc >> 8) ^ Common.CRC.Table[index]);
-            }
+                crc = Common.CRC.Calculate((byte)y, crc);
             return y;
         }
 
@@ -104,11 +95,7 @@ namespace pdj.tiny7z.Common
             if (internalStream is Stream)
             {
                 internalStream.Write(buffer, offset, count);
-                for (int i = offset; i < offset + count; ++i)
-                {
-                    byte index = (byte)(((crc) & 0xff) ^ buffer[i]);
-                    crc = (uint)((crc >> 8) ^ Common.CRC.Table[index]);
-                }
+                crc = Common.CRC.Calculate(buffer, offset, count, crc);
             }
         }
 
@@ -117,8 +104,7 @@ namespace pdj.tiny7z.Common
             if (internalStream is Stream)
             {
                 internalStream.WriteByte(value);
-                byte index = (byte)(((crc) & 0xff) ^ value);
-                crc = (uint)((crc >> 8) ^ Common.CRC.Table[index]);
+                crc = Common.CRC.Calculate(value, crc);
             }
         }
     }
