@@ -177,7 +177,7 @@ namespace pdj.tiny7z.Archive
                 Trace.TraceInformation($"All headers: " + (sig.StartHeader.NextHeaderSize + (uint)Marshal.SizeOf(sig)) + " bytes");
 
                 {
-                    uint crc32 = CRC.Calculate(sig.StartHeader.GetByteArray());
+                    uint crc32 = new CRC().Calculate(sig.StartHeader.GetByteArray()).Result;
                     if (crc32 != sig.StartHeaderCRC)
                     {
                         throw new SevenZipException("StartHeaderCRC mismatch: " + crc32.ToString("X8"));
@@ -194,7 +194,7 @@ namespace pdj.tiny7z.Archive
                 }
 
                 {
-                    uint crc32 = CRC.Calculate(buffer);
+                    uint crc32 = new CRC().Calculate(buffer).Result;
                     if (crc32 != sig.StartHeader.NextHeaderCRC)
                     {
                         throw new SevenZipException("StartHeader.NextHeaderCRC mismatch: " + crc32.ToString("X8"));

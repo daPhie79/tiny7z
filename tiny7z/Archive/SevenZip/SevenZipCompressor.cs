@@ -372,7 +372,7 @@ namespace pdj.tiny7z.Archive
             {
                 NextHeaderOffset = (UInt64)(endOfPackedStreamsPosition - Marshal.SizeOf(typeof(SevenZipArchive.SignatureHeader))),
                 NextHeaderSize = (UInt64)headerStream.Length,
-                NextHeaderCRC = CRC.Calculate(headerStream)
+                NextHeaderCRC = new CRC().Calculate(headerStream).Result
             };
 
             // write headers at the end of output stream
@@ -389,7 +389,7 @@ namespace pdj.tiny7z.Archive
                     Major = 0,
                     Minor = 2,
                 },
-                StartHeaderCRC = CRC.Calculate(startHeader.GetByteArray()),
+                StartHeaderCRC = new CRC().Calculate(startHeader.GetByteArray()).Result,
                 StartHeader = startHeader
             };
 

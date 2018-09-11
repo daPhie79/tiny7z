@@ -260,7 +260,7 @@ namespace pdj.tiny7z.Common
         private bool iterateStream()
         {
             // get crc and set size if it wasn't already
-            CRCs[currentIndex] = internalStream.CRC;
+            CRCs[currentIndex] = internalStream.Result;
             if (Sizes[currentIndex] == null)
                 Sizes[currentIndex] = currentSize;
 

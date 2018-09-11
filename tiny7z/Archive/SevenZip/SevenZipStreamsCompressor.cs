@@ -118,9 +118,9 @@ namespace pdj.tiny7z.Archive
 
                 // store sizes and checksums
                 ps.Folder.UnPackSizes[0] = (UInt64)(inputStream.Position - inStreamStartOffset);
-                ps.Folder.UnPackCRC = inCRCStream.CRC;
+                ps.Folder.UnPackCRC = inCRCStream.Result;
                 ps.Sizes[0] = (UInt64)(this.stream.Position - outStreamStartOffset);
-                ps.CRCs[0] = outCRCStream.CRC;
+                ps.CRCs[0] = outCRCStream.Result;
             }
 
             return ps;

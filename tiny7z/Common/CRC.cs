@@ -2,7 +2,7 @@
 
 namespace pdj.tiny7z.Common
 {
-    public static class CRC
+    public class CRC
     {
         public static uint[] Table
         {
@@ -33,13 +33,26 @@ namespace pdj.tiny7z.Common
             }
         }
 
-        public static uint Calculate(byte data, uint crc = 0xffffffff)
+        public uint Result
         {
-            byte index = (byte)(((crc) & 0xff) ^ data);
-            return (uint)((crc >> 8) ^ Table[index]);
+            get => ~crc;
         }
 
-        public static uint Calculate(byte[] data, int offset = 0, int count = -1, uint crc = 0xffffffff)
+        private uint crc;
+
+        public CRC(uint crc = 0xffffffff)
+        {
+            this.crc = crc;
+        }
+
+        public CRC Calculate(byte data)
+        {
+            byte index = (byte)(((crc) & 0xff) ^ data);
+            crc = (uint)((crc >> 8) ^ Table[index]);
+            return this;
+        }
+
+        public CRC Calculate(byte[] data, int offset = 0, int count = -1)
         {
             if (count == -1)
                 count = data.Length - offset;
@@ -52,10 +65,10 @@ namespace pdj.tiny7z.Common
                     crc = (uint)((crc >> 8) ^ Table[index]);
                 }
             }
-            return ~crc;
+            return this;
         }
 
-        public static uint Calculate(Stream stream, uint crc = 0xffffffff)
+        public CRC Calculate(Stream stream)
         {
             int bufferSize = 1048576;
             byte[] buffer = new byte[bufferSize];
@@ -69,7 +82,7 @@ namespace pdj.tiny7z.Common
                     crc = (uint)((crc >> 8) ^ Table[index]);
                 }
             }
-            return ~crc;
+            return this;
         }
     }
 }

@@ -11,10 +11,13 @@ namespace pdj.tiny7z.Common
         /// <summary>
         /// Access this once all stream has been read and it will be the stream's CRC32 value.
         /// </summary>
-        public uint CRC => ~crc;
+        public uint Result
+        {
+            get => this.crc.Result;
+        }
 
+        private CRC crc;
         private Stream internalStream;
-        private uint crc;
         private bool leaveOpen;
 
         public override bool CanRead => internalStream is Stream && internalStream.CanRead;
@@ -34,16 +37,23 @@ namespace pdj.tiny7z.Common
         public CRCStream()
             : base()
         {
+            crc = new CRC();
             internalStream = null;
-            crc = 0xffffffff;
             leaveOpen = true;
         }
 
         public CRCStream(Stream internalStream, bool leaveOpen = true)
             : base()
         {
+            this.crc = new CRC();
             this.internalStream = internalStream;
-            this.crc = 0xffffffff;
+            this.leaveOpen = leaveOpen;
+        }
+
+        public CRCStream(Stream internalStream, CRC crc, bool leaveOpen = true)
+        {
+            this.crc = crc;
+            this.internalStream = internalStream;
             this.leaveOpen = leaveOpen;
         }
 
@@ -57,7 +67,7 @@ namespace pdj.tiny7z.Common
 
         public override void Close()
         {
-            if (internalStream != null && !leaveOpen)
+            if (internalStream is Stream && !leaveOpen)
             {
                 internalStream.Close();
             }
@@ -68,7 +78,7 @@ namespace pdj.tiny7z.Common
         {
             int r = internalStream.Read(buffer, offset, count);
             if (r > 0)
-                crc = Common.CRC.Calculate(buffer, offset, r, crc);
+                crc.Calculate(buffer, offset, r);
             return r;
         }
 
@@ -76,7 +86,7 @@ namespace pdj.tiny7z.Common
         {
             int y = internalStream.ReadByte();
             if (y != -1)
-                crc = Common.CRC.Calculate((byte)y, crc);
+                crc.Calculate((byte)y);
             return y;
         }
 
@@ -95,7 +105,7 @@ namespace pdj.tiny7z.Common
             if (internalStream is Stream)
             {
                 internalStream.Write(buffer, offset, count);
-                crc = Common.CRC.Calculate(buffer, offset, count, crc);
+                crc.Calculate(buffer, offset, count);
             }
         }
 
@@ -104,7 +114,7 @@ namespace pdj.tiny7z.Common
             if (internalStream is Stream)
             {
                 internalStream.WriteByte(value);
-                crc = Common.CRC.Calculate(value, crc);
+                crc.Calculate(value);
             }
         }
     }
