@@ -43,16 +43,14 @@ namespace pdj.tiny7z.Common
         }
 
         public CRCStream(Stream internalStream, bool leaveOpen = true)
-            : base()
+            : this(internalStream, null, leaveOpen)
         {
-            this.crc = new CRC();
-            this.internalStream = internalStream;
-            this.leaveOpen = leaveOpen;
         }
 
         public CRCStream(Stream internalStream, CRC crc, bool leaveOpen = true)
+            : base()
         {
-            this.crc = crc;
+            this.crc = crc ?? new CRC();
             this.internalStream = internalStream;
             this.leaveOpen = leaveOpen;
         }
