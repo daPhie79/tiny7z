@@ -13,12 +13,11 @@ namespace pdj.tiny7z.Archive
     /// </summary>
     public class SevenZipExtractor : IExtractor
     {
-        #region Properties
+        #region Public Properties
         public IReadOnlyCollection<SevenZipArchiveFile> Files
         {
             get; private set;
         }
-        private SevenZipArchiveFile[] _Files;
 
         public bool OverwriteExistingFiles
         {
@@ -39,14 +38,14 @@ namespace pdj.tiny7z.Archive
         {
             get; set;
         }
-        #endregion
+        #endregion Public Properties
 
-        #region Private members
+        #region Private Fields
         Stream stream;
         SevenZipHeader header;
-        #endregion
+        #endregion Private Fields
 
-        #region Public methods
+        #region Public Methods
         public SevenZipExtractor(Stream stream, SevenZipHeader header)
         {
             this.stream = stream;
@@ -226,7 +225,7 @@ namespace pdj.tiny7z.Archive
                 (ulong index, Stream stream) => {
                     stream.Close();
                     SevenZipArchiveFile file = _Files[streamToFileIndex[index]];
-                    string fullPath = Path.Combine(outputDirectory, file.Name);
+                    string fullPath = Path.Combine(outputDirectory, PreserveDirectoryStructure ? file.Name : Path.GetFileName(file.Name));
                     if (file.Time != null)
                         File.SetLastWriteTimeUtc(fullPath, (DateTime)file.Time);
                 });
@@ -267,9 +266,13 @@ namespace pdj.tiny7z.Archive
 
             return this;
         }
-        #endregion
+        #endregion Public Methods
 
-        #region Private methods
+        #region Private Fields
+        private SevenZipArchiveFile[] _Files;
+        #endregion Private Fields
+
+        #region Private Methods
         bool processFile(string outputDirectory, SevenZipArchiveFile file)
         {
             string fullPath = Path.Combine(outputDirectory, PreserveDirectoryStructure ? file.Name : Path.GetFileName(file.Name));
@@ -443,6 +446,6 @@ namespace pdj.tiny7z.Archive
             }
 
         }
-        #endregion
+        #endregion Private Methods
     }
 }

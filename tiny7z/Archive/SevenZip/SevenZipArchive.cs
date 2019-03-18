@@ -7,8 +7,12 @@ using System.Runtime.InteropServices;
 
 namespace pdj.tiny7z.Archive
 {
+    /// <summary>
+    /// Main 7zip archive class to handle reading and writing into .7z archive files.
+    /// </summary>
     public class SevenZipArchive : Archive, IDisposable
     {
+        #region Public Constants and Structs
         /// <summary>
         /// 7zip file signature
         /// </summary>
@@ -58,33 +62,22 @@ namespace pdj.tiny7z.Archive
 
             public StartHeader StartHeader;
         }
+        #endregion Public Constants and Structs
 
-        /// <summary>
-        /// Header accessor property
-        /// </summary>
+        #region Private Properties
         SevenZipHeader Header
         {
             get; set;
         }
+        #endregion Private Properties
 
-        /// <summary>
-        /// Private variables
-        /// </summary>
+        #region Private Fields
         SignatureHeader signatureHeader;
         Stream stream;
         FileAccess? fileAccess;
+        #endregion Private Fields
 
-        /// <summary>
-        /// Defaut constructor
-        /// </summary>
-        public SevenZipArchive()
-        {
-            stream = null;
-            fileAccess = null;
-            Header = null;
-            IsValid = false;
-        }
-
+        #region Public Constructors
         /// <summary>
         /// Construct a 7zip file with an existing stream
         /// </summary>
@@ -96,19 +89,24 @@ namespace pdj.tiny7z.Archive
             if (fileAccess == FileAccess.Read)
             {
                 Trace.TraceInformation("Open 7zip archive for reading.");
-                Open();
+                open();
             }
             else if (fileAccess == FileAccess.Write)
             {
                 Trace.TraceInformation("Open 7zip archive for writing.");
-                Create();
+                create();
             }
             else
             {
                 throw new ArgumentException("`fileAccess` must be either `Read` or `Write`.");
             }
         }
+        #endregion Public Constructors
 
+        #region Public Methods
+        /// <summary>
+        /// IDiposable interface requirement
+        /// </summary>
         public void Dispose()
         {
             Close();
@@ -149,11 +147,26 @@ namespace pdj.tiny7z.Archive
         {
             // TODO
         }
+        #endregion Public Methods
 
+        #region Private Constructors
+        /// <summary>
+        /// Defaut empty constructor
+        /// </summary>
+        SevenZipArchive()
+        {
+            stream = null;
+            fileAccess = null;
+            Header = null;
+            IsValid = false;
+        }
+        #endregion Private Constructors
+
+        #region Private Methods
         /// <summary>
         /// Open an existing 7zip file for reading
         /// </summary>
-        void Open()
+        void open()
         {
             SignatureHeader sig = stream.ReadStruct<SignatureHeader>();
             if (!sig.Signature.SequenceEqual(kSignature))
@@ -235,7 +248,7 @@ namespace pdj.tiny7z.Archive
         /// <summary>
         /// Create a new 7zip file for writing
         /// </summary>
-        void Create()
+        void create()
         {
             this.signatureHeader = new SignatureHeader()
             {
@@ -250,6 +263,6 @@ namespace pdj.tiny7z.Archive
 
             this.Header = new SevenZipHeader(null, true);
         }
-
+        #endregion Private Methods
     }
 }

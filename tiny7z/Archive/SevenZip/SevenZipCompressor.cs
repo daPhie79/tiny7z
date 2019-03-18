@@ -9,14 +9,16 @@ using System.Runtime.InteropServices;
 
 namespace pdj.tiny7z.Archive
 {
+    /// <summary>
+    /// 7zip compressor class to compress files into an archive.
+    /// </summary>
     public class SevenZipCompressor : ICompressor
     {
-        #region Properties
+        #region Public Properties
         public ReadOnlyCollection<SevenZipArchiveFile> Files
         {
             get; private set;
         }
-        private List<SevenZipArchiveFile> _Files;
 
         public bool Solid
         {
@@ -32,14 +34,14 @@ namespace pdj.tiny7z.Archive
         {
             get; set;
         }
-        #endregion
+        #endregion Public Properties
 
-        #region Private members
+        #region Private Fields
         Stream stream;
         SevenZipHeader header;
-        #endregion
+        #endregion Private Fields
 
-        #region Public methods
+        #region Public Methods
         public SevenZipCompressor(Stream stream, SevenZipHeader header)
         {
             this.stream = stream;
@@ -66,20 +68,18 @@ namespace pdj.tiny7z.Archive
                 inputDirectory = new Uri(inputDirectory).LocalPath;
                 if (!Directory.Exists(inputDirectory))
                     throw new ArgumentException($"Input directory `{inputDirectory}` does not exist.");
-                if (archiveDirectory == null)
-                    archiveDirectory = "";
-                if (archiveDirectory != string.Empty)
-                    archiveDirectory = archiveDirectory.Replace('\\', '/').Trim('/') + '/';
+                archiveDirectory = (archiveDirectory ?? "").Replace('\\', '/').Trim('/').Trim() + '/';
 
                 List<SevenZipArchiveFile> addedFiles = new List<SevenZipArchiveFile>();
                 if (PreserveDirectoryStructure && recursive)
                 {
                     foreach (var dir in new DirectoryInfo(inputDirectory).EnumerateDirectories("*.*", SearchOption.AllDirectories))
                     {
-                        Trace.TraceInformation("Adding: " + dir.FullName);
+                        string dirName = (archiveDirectory + dir.FullName.Substring(inputDirectory.Length).Replace('\\', '/').TrimStart('/')).TrimStart('/');
+                        Trace.TraceInformation("Adding: " + dirName);
                         addedFiles.Add(new SevenZipArchiveFile()
                         {
-                            Name = archiveDirectory + dir.FullName.Substring(inputDirectory.Length),
+                            Name = dirName,
                             Size = 0,
                             Time = dir.LastWriteTimeUtc,
                             Attributes = (UInt32)dir.Attributes,
@@ -92,10 +92,11 @@ namespace pdj.tiny7z.Archive
 
                 foreach (var file in new DirectoryInfo(inputDirectory).EnumerateFiles("*.*", recursive ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly))
                 {
-                    Trace.TraceInformation("Adding: " + file);
+                    string fileName = (archiveDirectory + (PreserveDirectoryStructure ? file.FullName.Substring(inputDirectory.Length).Replace('\\', '/').TrimStart('/') : Path.GetFileName(file.FullName))).TrimStart('/');
+                    Trace.TraceInformation("Adding: " + fileName);
                     addedFiles.Add(new SevenZipArchiveFile()
                     {
-                        Name = archiveDirectory + (PreserveDirectoryStructure ? file.FullName.Substring(inputDirectory.Length) : Path.GetFileName(file.FullName)),
+                        Name = fileName,
                         Size = (UInt64)file.Length,
                         Time = (DateTime)file.LastWriteTimeUtc,
                         Attributes = (UInt32)file.Attributes,
@@ -203,9 +204,13 @@ namespace pdj.tiny7z.Archive
 
             return this;
         }
-        #endregion
+        #endregion Public Methods
 
-        #region Private methods
+        #region Private Fields
+        private List<SevenZipArchiveFile> _Files;
+        #endregion Private Fields
+
+        #region Private Methods
         void compressFilesSolid(ulong numStreams, Dictionary<ulong, ulong> streamToFileIndex)
         {
             var sc = new SevenZipStreamsCompressor(stream);
@@ -407,15 +412,14 @@ namespace pdj.tiny7z.Archive
             UInt64 numEmptyStreams = 0;
             bool[] emptyFiles = new bool[_Files.LongCount()];
             UInt64 numEmptyFiles = 0;
-            for (long i = 0, j = 0; i < _Files.LongCount(); ++i)
+            for (long i = 0; i < _Files.LongCount(); ++i)
             {
                 var file = _Files[(int)i];
                 if (file.IsEmpty)
                 {
                     emptyStreams[i] = true;
-                    emptyFiles[j++] = !file.IsDirectory;
+                    emptyFiles[numEmptyStreams++] = !file.IsDirectory;
 
-                    numEmptyStreams++;
                     numEmptyFiles += (file.IsDirectory ? (ulong)0 : 1);
                 }
                 else
@@ -423,7 +427,7 @@ namespace pdj.tiny7z.Archive
                     emptyStreams[i] = false;
                 }
             }
-            Array.Resize(ref emptyFiles, (int)numEmptyFiles);
+            Array.Resize(ref emptyFiles, (int)numEmptyStreams);
 
             // add properties to file property headers
 
@@ -469,6 +473,6 @@ namespace pdj.tiny7z.Archive
                 header.FilesInfo.Properties.Add(propertyEmptyFile);
             header.FilesInfo.Properties.AddRange(new SevenZipHeader.FileProperty[] { propertyName, propertyTime, propertyAttr });
         }
-        #endregion
+        #endregion Private Methods
     }
 }

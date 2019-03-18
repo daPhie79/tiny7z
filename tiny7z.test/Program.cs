@@ -46,6 +46,7 @@ namespace pdj.tiny7z
                 Directory.CreateDirectory(Path.Combine(InternalBase, "test"));
 
                 FolderBrowserDialog fbd = new FolderBrowserDialog();
+                fbd.SelectedPath = InternalBase;
                 if (fbd.ShowDialog() == DialogResult.OK)
                 {
                     if (!Directory.Exists(fbd.SelectedPath))
@@ -56,6 +57,7 @@ namespace pdj.tiny7z
                     var cmp = f.Compressor();
                     cmp.Solid = true;
                     cmp.CompressHeader = true;
+                    cmp.PreserveDirectoryStructure = true;
                     cmp.AddDirectory(fbd.SelectedPath);
                     now = DateTime.Now; cmp.Finalize(); ela = DateTime.Now.Subtract(now);
                     f.Dump();
@@ -74,6 +76,7 @@ namespace pdj.tiny7z
                 f2.Dump();
                 var ext = f2.Extractor();
                 ext.OverwriteExistingFiles = true;
+                ext.PreserveDirectoryStructure = true;
                 now = DateTime.Now; ext.ExtractArchive(Path.Combine(InternalBase, "test")); ela = DateTime.Now.Subtract(now);
                 Trace.TraceInformation($"Decompression took {ela.TotalMilliseconds}ms.");
             }
