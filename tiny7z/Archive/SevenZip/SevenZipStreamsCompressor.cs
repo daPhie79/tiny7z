@@ -22,15 +22,13 @@ namespace pdj.tiny7z.Archive
             get; set;
         }
 
-        Stream stream;
-
         public SevenZipStreamsCompressor(Stream stream)
         {
             this.stream = stream;
             this.Method = null;
         }
 
-        public PackedStream Compress(Stream inputStream)
+        public PackedStream Compress(Stream inputStream, SevenZipProgressProvider progressProvider)
         {
             // Compression method
             if (!Method.HasValue || !SevenZipMethods.Lookup.ContainsKey(Method.Value))
@@ -102,7 +100,7 @@ namespace pdj.tiny7z.Archive
                     });
 
                 // encode
-                res = encoder.LzmaEnc_Encode(outputHelper, inputHelper, null, LZMA.ISzAlloc.SmallAlloc, LZMA.ISzAlloc.BigAlloc);
+                res = encoder.LzmaEnc_Encode(outputHelper, inputHelper, progressProvider, LZMA.ISzAlloc.SmallAlloc, LZMA.ISzAlloc.BigAlloc);
                 if (res != LZMA.SZ_OK)
                     throw new InvalidOperationException();
 
@@ -124,5 +122,8 @@ namespace pdj.tiny7z.Archive
             return ps;
         }
 
+        #region Private Field
+        Stream stream;
+        #endregion Private Field
     }
 }

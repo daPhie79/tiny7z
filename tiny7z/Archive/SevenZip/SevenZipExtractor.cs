@@ -14,9 +14,19 @@ namespace pdj.tiny7z.Archive
     public class SevenZipExtractor : IExtractor
     {
         #region Public Properties
-        public IReadOnlyCollection<SevenZipArchiveFile> Files
+        public IReadOnlyCollection<ArchiveFile> Files
         {
             get; private set;
+        }
+
+        public ProgressDelegate ProgressDelegate
+        {
+            get; set;
+        }
+
+        public bool AllowFileDeletions
+        {
+            get; set;
         }
 
         public bool OverwriteExistingFiles
@@ -24,7 +34,7 @@ namespace pdj.tiny7z.Archive
             get; set;
         }
 
-        public bool SkipExistingFiles
+        public string Password
         {
             get; set;
         }
@@ -34,16 +44,11 @@ namespace pdj.tiny7z.Archive
             get; set;
         }
 
-        public bool AllowFileDeletions
+        public bool SkipExistingFiles
         {
             get; set;
         }
         #endregion Public Properties
-
-        #region Private Fields
-        Stream stream;
-        SevenZipHeader header;
-        #endregion Private Fields
 
         #region Public Methods
         public SevenZipExtractor(Stream stream, SevenZipHeader header)
@@ -57,7 +62,15 @@ namespace pdj.tiny7z.Archive
             if (header == null || header.RawHeader == null)
                 throw new ArgumentNullException("Header has not been parsed and/or decompressed properly.");
 
+            // init file lists
             buildFilesIndex();
+
+            // default values
+            AllowFileDeletions = false;
+            OverwriteExistingFiles = false;
+            Password = null;
+            PreserveDirectoryStructure = true;
+            SkipExistingFiles = false;
         }
 
         public void Dump()
@@ -110,9 +123,16 @@ namespace pdj.tiny7z.Archive
                 {
                     Trace.TraceInformation($"Filename: `{file.Name}`, file size: `{file.Size} bytes`.");
 
-                    var sx = new SevenZipStreamsExtractor(stream, header.RawHeader.MainStreamsInfo);
+                    SevenZipProgressProvider szpp = null;
+                    if (ProgressDelegate != null)
+                    {
+                        szpp = new SevenZipProgressProvider(new List<SevenZipArchiveFile>(new[] { file }));
+                        szpp.ProgressFunc = ProgressDelegate;
+                    }
+
+                    var sx = new SevenZipStreamsExtractor(stream, header.RawHeader.MainStreamsInfo, Password);
                     using (Stream fileStream = File.Create(fullPath))
-                        sx.Extract((UInt64)file.UnPackIndex, fileStream);
+                        sx.Extract((UInt64)file.UnPackIndex, fileStream, szpp);
                     if (file.Time != null)
                         File.SetLastWriteTimeUtc(fullPath, (DateTime)file.Time);
                 }
@@ -141,8 +161,15 @@ namespace pdj.tiny7z.Archive
             {
                 Trace.TraceInformation($"Filename: `{file.Name}`, file size: `{file.Size} bytes`.");
 
-                var sx = new SevenZipStreamsExtractor(stream, header.RawHeader.MainStreamsInfo);
-                sx.Extract((UInt64)file.UnPackIndex, outputStream);
+                SevenZipProgressProvider szpp = null;
+                if (ProgressDelegate != null)
+                {
+                    szpp = new SevenZipProgressProvider(new List<SevenZipArchiveFile>(new[] { file }));
+                    szpp.ProgressFunc = ProgressDelegate;
+                }
+
+                var sx = new SevenZipStreamsExtractor(stream, header.RawHeader.MainStreamsInfo, Password);
+                sx.Extract((UInt64)file.UnPackIndex, outputStream, szpp);
             }
 
             return this;
@@ -203,7 +230,14 @@ namespace pdj.tiny7z.Archive
                     streamToFileIndex[streamIndex++] = i;
             }
 
-            var sx = new SevenZipStreamsExtractor(stream, header.RawHeader.MainStreamsInfo);
+            SevenZipProgressProvider szpp = null;
+            if (ProgressDelegate != null)
+            {
+                szpp = new SevenZipProgressProvider(indices.Select(i => _Files[i]).ToList());
+                szpp.ProgressFunc = ProgressDelegate;
+            }
+            
+            var sx = new SevenZipStreamsExtractor(stream, header.RawHeader.MainStreamsInfo, Password);
             sx.ExtractMultiple(
                 streamIndices.ToArray(),
 
@@ -228,7 +262,8 @@ namespace pdj.tiny7z.Archive
                     string fullPath = Path.Combine(outputDirectory, PreserveDirectoryStructure ? file.Name : Path.GetFileName(file.Name));
                     if (file.Time != null)
                         File.SetLastWriteTimeUtc(fullPath, (DateTime)file.Time);
-                });
+                },
+                szpp);
 
             return this;
         }
@@ -258,18 +293,28 @@ namespace pdj.tiny7z.Archive
                     streamToFileIndex[streamIndex++] = i;
             }
 
-            var sx = new SevenZipStreamsExtractor(stream, header.RawHeader.MainStreamsInfo);
+            SevenZipProgressProvider szpp = null;
+            if (ProgressDelegate != null)
+            {
+                szpp = new SevenZipProgressProvider(indices.Select(i => _Files[i]).ToList());
+                szpp.ProgressFunc = ProgressDelegate;
+            }
+
+            var sx = new SevenZipStreamsExtractor(stream, header.RawHeader.MainStreamsInfo, Password);
             sx.ExtractMultiple(
                 indices == null ? null : streamIndices.ToArray(),
                 (ulong index) => onStreamRequest(_Files[streamToFileIndex[index]]),
-                (ulong index, Stream stream) => onStreamClose?.Invoke(_Files[streamToFileIndex[index]], stream));
+                (ulong index, Stream stream) => onStreamClose?.Invoke(_Files[streamToFileIndex[index]], stream),
+                szpp);
 
             return this;
         }
         #endregion Public Methods
 
         #region Private Fields
-        private SevenZipArchiveFile[] _Files;
+        Stream stream;
+        SevenZipHeader header;
+        SevenZipArchiveFile[] _Files;
         #endregion Private Fields
 
         #region Private Methods

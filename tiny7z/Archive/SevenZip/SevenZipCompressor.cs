@@ -15,12 +15,12 @@ namespace pdj.tiny7z.Archive
     public class SevenZipCompressor : ICompressor
     {
         #region Public Properties
-        public ReadOnlyCollection<SevenZipArchiveFile> Files
+        public IReadOnlyCollection<ArchiveFile> Files
         {
             get; private set;
         }
 
-        public bool Solid
+        public ProgressDelegate ProgressDelegate
         {
             get; set;
         }
@@ -34,12 +34,12 @@ namespace pdj.tiny7z.Archive
         {
             get; set;
         }
-        #endregion Public Properties
 
-        #region Private Fields
-        Stream stream;
-        SevenZipHeader header;
-        #endregion Private Fields
+        public bool Solid
+        {
+            get; set;
+        }
+        #endregion Public Properties
 
         #region Public Methods
         public SevenZipCompressor(Stream stream, SevenZipHeader header)
@@ -48,15 +48,20 @@ namespace pdj.tiny7z.Archive
             this.header = header;
 
             if (stream == null || !stream.CanWrite)
-                throw new ArgumentNullException("Stream isn't suitable for extraction.");
+                throw new ArgumentNullException("Stream isn't suitable for compression.");
 
             if (header == null)
                 throw new ArgumentNullException("Header has not been prepared properly.");
 
+            // init file list
             _Files = new List<SevenZipArchiveFile>();
             Files = new ReadOnlyCollection<SevenZipArchiveFile>(_Files);
-            Solid = true;
+
+            // default values
+            ProgressDelegate = null;
             CompressHeader = true;
+            PreserveDirectoryStructure = true;
+            Solid = true;
         }
 
         public ICompressor AddDirectory(string inputDirectory, string archiveDirectory = null, bool recursive = true)
@@ -181,16 +186,25 @@ namespace pdj.tiny7z.Archive
                         streamToFileIndex[streamIndex++] = (ulong)i;
                     }
                 }
+                Files = new ReadOnlyCollection<SevenZipArchiveFile>(_Files);
+
+                // progress object
+                SevenZipProgressProvider szpp = null;
+                if (ProgressDelegate != null)
+                {
+                    szpp = new SevenZipProgressProvider(_Files);
+                    szpp.ProgressFunc = ProgressDelegate;
+                }
 
                 // compress files
                 this.header.RawHeader.MainStreamsInfo = new SevenZipHeader.StreamsInfo();
                 if (Solid && streamIndex > 1)
                 {
-                    compressFilesSolid(streamIndex, streamToFileIndex);
+                    compressFilesSolid(streamIndex, streamToFileIndex, szpp);
                 }
                 else
                 {
-                    compressFilesNonSolid(streamIndex, streamToFileIndex);
+                    compressFilesNonSolid(streamIndex, streamToFileIndex, szpp);
                 }
 
                 // write headers
@@ -207,11 +221,13 @@ namespace pdj.tiny7z.Archive
         #endregion Public Methods
 
         #region Private Fields
+        private Stream stream;
+        private SevenZipHeader header;
         private List<SevenZipArchiveFile> _Files;
         #endregion Private Fields
 
         #region Private Methods
-        void compressFilesSolid(ulong numStreams, Dictionary<ulong, ulong> streamToFileIndex)
+        void compressFilesSolid(ulong numStreams, Dictionary<ulong, ulong> streamToFileIndex, SevenZipProgressProvider progressProvider)
         {
             var sc = new SevenZipStreamsCompressor(stream);
             sc.Method = Compression.Registry.Method.LZMA;
@@ -222,7 +238,7 @@ namespace pdj.tiny7z.Archive
             var inputStream = new MultiFileStream(
                 FileAccess.Read,
                 streamToFileIndex.Select(sfi => _Files[(int)sfi.Value].Source).ToArray());
-            SevenZipStreamsCompressor.PackedStream cs = sc.Compress(inputStream);
+            SevenZipStreamsCompressor.PackedStream cs = sc.Compress(inputStream, progressProvider);
 
             // build headers
             var streamsInfo = this.header.RawHeader.MainStreamsInfo;
@@ -262,7 +278,7 @@ namespace pdj.tiny7z.Archive
             }
         }
 
-        void compressFilesNonSolid(ulong numStreams, Dictionary<ulong, ulong> streamToFileIndex)
+        void compressFilesNonSolid(ulong numStreams, Dictionary<ulong, ulong> streamToFileIndex, SevenZipProgressProvider progressProvider)
         {
             var sc = new SevenZipStreamsCompressor(stream);
             sc.Method = Compression.Registry.Method.LZMA;
@@ -276,7 +292,7 @@ namespace pdj.tiny7z.Archive
 
                 Trace.TraceInformation($"Compressing `{file.Name}`, Size: `{file.Size} bytes`...");
                 using (Stream source = file.Source.Get(FileAccess.Read))
-                    css[i] = sc.Compress(source);
+                    css[i] = sc.Compress(source, progressProvider);
 
                 numPackStreams += css[i].NumStreams;
             }
@@ -336,7 +352,7 @@ namespace pdj.tiny7z.Archive
 
                 // compress
                 headerStream.Position = 0;
-                SevenZipStreamsCompressor.PackedStream cs = sc.Compress(headerStream);
+                SevenZipStreamsCompressor.PackedStream cs = sc.Compress(headerStream, null);
 
                 // create encoded header
                 SevenZipHeader.StreamsInfo headerStreamsInfo = new SevenZipHeader.StreamsInfo()

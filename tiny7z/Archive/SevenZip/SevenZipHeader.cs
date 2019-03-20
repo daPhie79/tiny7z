@@ -10,6 +10,7 @@ namespace pdj.tiny7z.Archive
 {
     public partial class SevenZipHeader : IHeaderParser, IHeaderWriter
     {
+        #region Public Enums
         /// <summary>
         /// All valid property IDs
         /// </summary>
@@ -53,7 +54,9 @@ namespace pdj.tiny7z.Archive
             kStartPos = 0x18,
             kDummy = 0x19,
         };
+        #endregion Public Enums
 
+        #region Public Classes
         public class Digests : IHeaderParser, IHeaderWriter
         {
             public UInt64 NumStreams()
@@ -316,11 +319,10 @@ namespace pdj.tiny7z.Archive
             public UInt64 NumPackedStreams; // NumInStreamsTotal - NumBindPairs
             public UInt64[] PackedIndices; // [NumPackedStreams]
 
-            // added from UnPackInfo (for convenience):
-            // start ---
+            #region Added From UnPackInfo (for convenience)
             public UInt64[] UnPackSizes; // [NumOutStreamsTotal]
             public UInt32? UnPackCRC; // NULL is undefined
-            // end -----
+            #endregion Added From UnPackInfo
 
             public Folder()
             {
@@ -1141,10 +1143,9 @@ namespace pdj.tiny7z.Archive
                 hs.WriteByte((Byte)PropertyID.kEnd);
             }
         }
+        #endregion Public Classes
 
-        /// <summary>
-        /// Class properties
-        /// </summary>
+        #region Public Properties
         public Header RawHeader
         {
             get; set;
@@ -1153,12 +1154,13 @@ namespace pdj.tiny7z.Archive
         {
             get; set;
         }
+        #endregion Public Properties
 
-        /// <summary>
-        /// Private variables
-        /// </summary>
+        #region Private Fields
         private Stream headerStream;
+        #endregion Private Fields
 
+        #region Public Constructors
         /// <summary>
         /// 7zip file header constructor
         /// </summary>
@@ -1168,7 +1170,9 @@ namespace pdj.tiny7z.Archive
             RawHeader = createNew ? new Header() : null;
             EncodedHeader = null;
         }
+        #endregion Public Constructors
 
+        #region Public Methods
         /// <summary>
         /// Main parser that initiates cascaded parsing
         /// </summary>
@@ -1176,6 +1180,10 @@ namespace pdj.tiny7z.Archive
         {
             Parse(headerStream);
         }
+
+        /// <summary>
+        /// Main parser entry point.
+        /// </summary>
         public void Parse(Stream headerStream)
         {
             try
@@ -1253,5 +1261,6 @@ namespace pdj.tiny7z.Archive
             if (GetPropertyID(parser, headerStream) != propertyID)
                 throw new SevenZipException(parser.GetType().Name + $": Expected property ID = {propertyID}.");
         }
+        #endregion Public Methods
     }
 }

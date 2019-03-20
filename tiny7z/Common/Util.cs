@@ -12,7 +12,7 @@ namespace pdj.tiny7z.Common
         /// <summary>
         /// Alternative stream copy method to CopyTo. Stops writing when count is reached.
         /// </summary>
-        public static long TransferTo(this Stream source, Stream destination, long count)
+        public static long TransferTo(this Stream source, Stream destination, long count, Archive.IProgressProvider progress = null)
         {
             if (count == 0)
                 throw new ArgumentOutOfRangeException();
@@ -32,6 +32,9 @@ namespace pdj.tiny7z.Common
                 total += r;
                 count -= r;
                 destination.Write(array, 0, r);
+
+                if (progress != null)
+                    progress.SetProgress((ulong)total, 0);
             }
             return total;
         }
@@ -39,7 +42,7 @@ namespace pdj.tiny7z.Common
         /// <summary>
         /// Alternative stream copy method to CopyTo. Stops writing when no more data is available from input.
         /// </summary>
-        public static long TransferTo(this Stream source, Stream destination)
+        public static long TransferTo(this Stream source, Stream destination, Archive.IProgressProvider progress = null)
         {
             byte[] array = getTransferByteArray();
             int count;
@@ -48,6 +51,9 @@ namespace pdj.tiny7z.Common
             {
                 destination.Write(array, 0, count);
                 total += count;
+
+                if (progress != null)
+                    progress.SetProgress((ulong)total, 0);
             }
             return total;
         }
@@ -82,11 +88,6 @@ namespace pdj.tiny7z.Common
                 return number >> bits;
             }
             return (number >> bits) + (2L << ~bits);
-        }
-
-        public static void Dump(object o)
-        {
-
         }
     }
 }

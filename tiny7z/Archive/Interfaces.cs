@@ -1,13 +1,87 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 
 namespace pdj.tiny7z.Archive
 {
     /// <summary>
+    /// User progress delegate called by IProgressProvider implementation
+    /// </summary>
+    /// <param name="provider">Reference to the IProgressProvider object calling this. Allows accessing the list of files</param>
+    /// <param name="fileIndex">Index of file referenced from the list of files</param>
+    /// <param name="fileValue">Current size of file having been processed</param>
+    /// <param name="rawSize">Current size of total data having been processed</param>
+    /// <param name="rawMaximum">Maximum size of total data available. When rawSize == rawMaximum, all data has been processed</param>
+    /// <param name="compressedSize">Compressed size of data. If unavailable, this will be ZERO</param>
+    /// <returns>TRUE if everything is fine, FALSE if processing should be aborted if possible</returns>
+    public delegate bool ProgressDelegate(IProgressProvider provider, int fileIndex, ulong fileValue, ulong rawSize, ulong rawMaximum, ulong compressedSize);
+
+    /// <summary>
+    /// Progress feedback interface
+    /// </summary>
+    public interface IProgressProvider
+    {
+        /// <summary>
+        /// List of files that are being processed and targetted by the progress report
+        /// </summary>
+        IReadOnlyCollection<ArchiveFile> Files
+        {
+            get;
+        }
+
+        /// <summary>
+        /// Actual progress delegate that will be called everytime this object is being updated
+        /// </summary>
+        ProgressDelegate ProgressFunc
+        {
+            get; set;
+        }
+
+        /// <summary>
+        /// File processing methods will call this to increase base offset. When compressor/decompressor is called mutliple times for the same compression/decompression operation, this ensures a cumulative process
+        /// </summary>
+        /// <param name="rawSizeOffset">Raw size offset</param>
+        /// <param name="compressedSizeOffset">Compressed size offset</param>
+        void IncreaseOffsetBy(long rawSizeOffset, long compressedSizeOffset);
+
+        /// <summary>
+        /// File processing methods will call this to notify of progress
+        /// </summary>
+        /// <param name="rawSize">Raw size progress</param>
+        /// <param name="compressedSize">Compressed size progress</param>
+        /// <returns></returns>
+        bool SetProgress(ulong rawSize, ulong compressedSize);
+    }
+
+    /// <summary>
     /// Extractor proxy interface
     /// </summary>
     public interface IExtractor
     {
+        /// <summary>
+        /// List of files contained in the opened archive.
+        /// </summary>
+        IReadOnlyCollection<ArchiveFile> Files
+        {
+            get;
+        }
+
+        /// <summary>
+        /// Function that can be called to show progress.
+        /// </summary>
+        ProgressDelegate ProgressDelegate
+        {
+            get; set;
+        }
+
+        /// <summary>
+        /// Set this to true and "anti" files in archives will actively delete files in output.
+        /// </summary>
+        bool AllowFileDeletions
+        {
+            get; set;
+        }
+
         /// <summary>
         /// Set this to true and existing files will be overwritten.
         /// </summary>
@@ -17,9 +91,9 @@ namespace pdj.tiny7z.Archive
         }
 
         /// <summary>
-        /// Set this to true and existing files will not be deleted, but no exception will be thrown.
+        /// Set this to enable encrypted password-protected extraction.
         /// </summary>
-        bool SkipExistingFiles
+        string Password
         {
             get; set;
         }
@@ -33,9 +107,9 @@ namespace pdj.tiny7z.Archive
         }
 
         /// <summary>
-        /// Set this to true and "anti" files in archives will actively delete files in output.
+        /// Set this to true and existing files will not be deleted, but no exception will be thrown.
         /// </summary>
-        bool AllowFileDeletions
+        bool SkipExistingFiles
         {
             get; set;
         }
@@ -97,6 +171,30 @@ namespace pdj.tiny7z.Archive
     public interface ICompressor
     {
         /// <summary>
+        /// List of files in the archive.
+        /// </summary>
+        IReadOnlyCollection<ArchiveFile> Files
+        {
+            get;
+        }
+
+        /// <summary>
+        /// Function that can be called to show progress.
+        /// </summary>
+        ProgressDelegate ProgressDelegate
+        {
+            get; set;
+        }
+
+        /// <summary>
+        /// Set this to true to compress header as well (if archive supports it).
+        /// </summary>
+        bool CompressHeader
+        {
+            get; set;
+        }
+
+        /// <summary>
         /// Set this to true to keep input files directories into archive.
         /// </summary>
         bool PreserveDirectoryStructure
@@ -108,14 +206,6 @@ namespace pdj.tiny7z.Archive
         /// Set this to true to compress all files in a single block (if archive supports it).
         /// </summary>
         bool Solid
-        {
-            get; set;
-        }
-
-        /// <summary>
-        /// Set this to true to compress header as well (if archive supports it).
-        /// </summary>
-        bool CompressHeader
         {
             get; set;
         }

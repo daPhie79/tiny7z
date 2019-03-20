@@ -59,6 +59,17 @@ namespace pdj.tiny7z
                     cmp.CompressHeader = true;
                     cmp.PreserveDirectoryStructure = true;
                     cmp.AddDirectory(fbd.SelectedPath);
+                    cmp.ProgressDelegate = (IProgressProvider provider,
+                        int fileIndex,
+                        ulong fileValue,
+                        ulong rawSize,
+                        ulong rawMaximum,
+                        ulong compressedSize) =>
+                        {
+                            Trace.Write(".");
+                            return true;
+                        };
+
                     now = DateTime.Now; cmp.Finalize(); ela = DateTime.Now.Subtract(now);
                     f.Dump();
                     f.Close();
@@ -77,6 +88,17 @@ namespace pdj.tiny7z
                 var ext = f2.Extractor();
                 ext.OverwriteExistingFiles = true;
                 ext.PreserveDirectoryStructure = true;
+                ext.ProgressDelegate = (IProgressProvider provider,
+                    int fileIndex,
+                    ulong fileValue,
+                    ulong rawSize,
+                    ulong rawMaximum,
+                    ulong compressedSize) =>
+                {
+                    Trace.Write(".");
+                    return true;
+                };
+
                 now = DateTime.Now; ext.ExtractArchive(Path.Combine(InternalBase, "test")); ela = DateTime.Now.Subtract(now);
                 Trace.TraceInformation($"Decompression took {ela.TotalMilliseconds}ms.");
             }
