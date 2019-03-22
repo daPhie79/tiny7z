@@ -88,6 +88,7 @@ namespace pdj.tiny7z
                 var ext = f2.Extractor();
                 ext.OverwriteExistingFiles = true;
                 ext.PreserveDirectoryStructure = true;
+                ext.Password = "TEST";
                 ext.ProgressDelegate = (IProgressProvider provider,
                     int fileIndex,
                     ulong fileValue,

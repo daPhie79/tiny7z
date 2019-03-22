@@ -117,6 +117,10 @@ namespace pdj.tiny7z.Archive
                 ps.Folder.UnPackCRC = inCRCStream.Result;
                 ps.Sizes[0] = (UInt64)(this.stream.Position - outStreamStartOffset);
                 ps.CRCs[0] = outCRCStream.Result;
+
+                // handle progress offsets (in case compressor is called multiple times, with non-solid archives for instance)
+                if (progressProvider != null)
+                    progressProvider.IncreaseOffsetBy((long)ps.Folder.UnPackSizes[0], (long)ps.Sizes[0]);
             }
 
             return ps;

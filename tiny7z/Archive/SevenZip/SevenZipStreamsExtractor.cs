@@ -35,11 +35,16 @@ namespace pdj.tiny7z.Archive
             ulong packIndex = 0;
             for (ulong i = 0; i < streamsInfo.UnPackInfo.NumFolders; ++i)
             {
+                bool processed = false;
+
                 // only one unpack stream in folder
                 if (streamsInfo.SubStreamsInfo == null || !streamsInfo.SubStreamsInfo.NumUnPackStreamsInFolders.Any())
                 {
                     if (!outStreamIndices.Any() || outStreamIndices.Contains(index))
+                    {
                         extractMultipleFromFolder(index, null, i, packIndex, onStreamRequest, onStreamClose, progressProvider);
+                        processed = true;
+                    }
 
                     ++index;
                 }
@@ -53,16 +58,27 @@ namespace pdj.tiny7z.Archive
                         matches[j] = (!outStreamIndices.Any() || outStreamIndices.Contains(index));
 
                     if (matches.Any(match => match == true))
+                    {
                         extractMultipleFromFolder(osiOffset, matches, i, packIndex, onStreamRequest, onStreamClose, progressProvider);
+                        processed = true;
+                    }
                 }
                 packIndex += streamsInfo.UnPackInfo.Folders[i].NumPackedStreams;
+
+                // add unpack offset to progress provider if folder was skipped entirely
+                if (!processed)
+                {
+                    ulong unPackSize = streamsInfo.UnPackInfo.Folders[i].GetUnPackSize();
+                    if (progressProvider != null)
+                        progressProvider.IncreaseOffsetBy((long)unPackSize, 0);
+                }
             }
         }
 
         #region Compression.IPasswordProvider
         public string CryptoGetTextPassword()
         {
-            return password;
+            return password ?? string.Empty;
         }
         #endregion Compression.IPasswordProvider
         #endregion Public Constructor and Methods
@@ -105,7 +121,7 @@ namespace pdj.tiny7z.Archive
                         },
                         (ulong innerIndex, Stream stream) =>
                         {
-                            if (matches[innerIndex])
+                            if (onStreamClose != null && matches[innerIndex])
                                 onStreamClose(outputStreamIndexOffset + innerIndex, stream);
                         });
 
@@ -121,9 +137,7 @@ namespace pdj.tiny7z.Archive
                 ulong unPackSize = streamsInfo.UnPackInfo.Folders[folderIndex].GetUnPackSize();
                 Util.TransferTo(decoder, outStream, (long)unPackSize, progressProvider);
                 if (progressProvider != null)
-                {
                     progressProvider.IncreaseOffsetBy((long)unPackSize, 0);
-                }
 
                 // call stream close delegate if only one stream and delegate present
                 if (matches == null)

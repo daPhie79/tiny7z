@@ -14,7 +14,7 @@ namespace pdj.tiny7z.Archive
     public class SevenZipExtractor : IExtractor
     {
         #region Public Properties
-        public IReadOnlyCollection<ArchiveFile> Files
+        public IReadOnlyList<ArchiveFile> Files
         {
             get; private set;
         }
@@ -125,10 +125,7 @@ namespace pdj.tiny7z.Archive
 
                     SevenZipProgressProvider szpp = null;
                     if (ProgressDelegate != null)
-                    {
-                        szpp = new SevenZipProgressProvider(new List<SevenZipArchiveFile>(new[] { file }));
-                        szpp.ProgressFunc = ProgressDelegate;
-                    }
+                        szpp = new SevenZipProgressProvider(_Files, new[] { index }, ProgressDelegate);
 
                     var sx = new SevenZipStreamsExtractor(stream, header.RawHeader.MainStreamsInfo, Password);
                     using (Stream fileStream = File.Create(fullPath))
@@ -163,10 +160,7 @@ namespace pdj.tiny7z.Archive
 
                 SevenZipProgressProvider szpp = null;
                 if (ProgressDelegate != null)
-                {
-                    szpp = new SevenZipProgressProvider(new List<SevenZipArchiveFile>(new[] { file }));
-                    szpp.ProgressFunc = ProgressDelegate;
-                }
+                    szpp = new SevenZipProgressProvider(_Files, new[] { index }, ProgressDelegate);
 
                 var sx = new SevenZipStreamsExtractor(stream, header.RawHeader.MainStreamsInfo, Password);
                 sx.Extract((UInt64)file.UnPackIndex, outputStream, szpp);
@@ -232,11 +226,8 @@ namespace pdj.tiny7z.Archive
 
             SevenZipProgressProvider szpp = null;
             if (ProgressDelegate != null)
-            {
-                szpp = new SevenZipProgressProvider(indices.Select(i => _Files[i]).ToList());
-                szpp.ProgressFunc = ProgressDelegate;
-            }
-            
+                szpp = new SevenZipProgressProvider(_Files, indices, ProgressDelegate);
+
             var sx = new SevenZipStreamsExtractor(stream, header.RawHeader.MainStreamsInfo, Password);
             sx.ExtractMultiple(
                 streamIndices.ToArray(),
@@ -295,10 +286,7 @@ namespace pdj.tiny7z.Archive
 
             SevenZipProgressProvider szpp = null;
             if (ProgressDelegate != null)
-            {
-                szpp = new SevenZipProgressProvider(indices.Select(i => _Files[i]).ToList());
-                szpp.ProgressFunc = ProgressDelegate;
-            }
+                szpp = new SevenZipProgressProvider(_Files, indices, ProgressDelegate);
 
             var sx = new SevenZipStreamsExtractor(stream, header.RawHeader.MainStreamsInfo, Password);
             sx.ExtractMultiple(
@@ -369,11 +357,10 @@ namespace pdj.tiny7z.Archive
 
         long findFileIndex(string Name, bool exactPath)
         {
-            ulong? index = _Files
-                .Where(file => exactPath ? (file.Name == Name) : (Path.GetFileName(Name) == Path.GetFileName(file.Name)))
-                .Select(file => file.UnPackIndex)
-                .FirstOrDefault();
-            return index == default(ulong?) ? -1 : (long)index;
+            for (long i = 0; i < _Files.LongLength; i++)
+                if ((exactPath && (_Files[i].Name == Name)) || (!exactPath && (Path.GetFileName(Name) == Path.GetFileName(_Files[i].Name))))
+                    return i;
+            return -1;
         }
 
         void buildFilesIndex()
@@ -384,7 +371,7 @@ namespace pdj.tiny7z.Archive
             _Files = new SevenZipArchiveFile[filesInfo.NumFiles];
             for (ulong i = 0; i < filesInfo.NumFiles; ++i)
                 _Files[i] = new SevenZipArchiveFile();
-            Files = new ReadOnlyCollection<SevenZipArchiveFile>(_Files);
+            Files = _Files;
 
             // set properties that are contained in FileProperties structures
 

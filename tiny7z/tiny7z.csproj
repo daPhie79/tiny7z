@@ -60,6 +60,8 @@
     <Compile Include="Common\Streams\AbstractMultiStream.cs" />
     <Compile Include="Common\Streams\NullStream.cs" />
     <Compile Include="Common\Streams\SubStream.cs" />
+    <None Include="_Backup\tiny7z.test\Test.cs" />
+    <None Include="_Backup\tiny7z.test\Util.cs" />
     <None Include="LICENSE" />
     <Compile Include="Common\Util.cs" />
     <Compile Include="Common\CRC.cs" />

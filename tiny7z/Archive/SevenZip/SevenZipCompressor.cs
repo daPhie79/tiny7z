@@ -15,7 +15,7 @@ namespace pdj.tiny7z.Archive
     public class SevenZipCompressor : ICompressor
     {
         #region Public Properties
-        public IReadOnlyCollection<ArchiveFile> Files
+        public IReadOnlyList<ArchiveFile> Files
         {
             get; private set;
         }
@@ -55,7 +55,7 @@ namespace pdj.tiny7z.Archive
 
             // init file list
             _Files = new List<SevenZipArchiveFile>();
-            Files = new ReadOnlyCollection<SevenZipArchiveFile>(_Files);
+            Files = _Files;
 
             // default values
             ProgressDelegate = null;
@@ -186,15 +186,11 @@ namespace pdj.tiny7z.Archive
                         streamToFileIndex[streamIndex++] = (ulong)i;
                     }
                 }
-                Files = new ReadOnlyCollection<SevenZipArchiveFile>(_Files);
 
                 // progress object
                 SevenZipProgressProvider szpp = null;
                 if (ProgressDelegate != null)
-                {
-                    szpp = new SevenZipProgressProvider(_Files);
-                    szpp.ProgressFunc = ProgressDelegate;
-                }
+                    szpp = new SevenZipProgressProvider(_Files, null, ProgressDelegate);
 
                 // compress files
                 this.header.RawHeader.MainStreamsInfo = new SevenZipHeader.StreamsInfo();

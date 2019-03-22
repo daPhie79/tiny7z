@@ -8,13 +8,13 @@ namespace pdj.tiny7z.Archive
     /// User progress delegate called by IProgressProvider implementation
     /// </summary>
     /// <param name="provider">Reference to the IProgressProvider object calling this. Allows accessing the list of files</param>
-    /// <param name="fileIndex">Index of file referenced from the list of files</param>
-    /// <param name="fileValue">Current size of file having been processed</param>
+    /// <param name="currentFileIndex">Index of file referenced from the list of files</param>
+    /// <param name="currentFileSize">Current size of file having been processed</param>
+    /// <param name="filesSize">Current size of cumulative files having been processed</param>
     /// <param name="rawSize">Current size of total data having been processed</param>
-    /// <param name="rawMaximum">Maximum size of total data available. When rawSize == rawMaximum, all data has been processed</param>
     /// <param name="compressedSize">Compressed size of data. If unavailable, this will be ZERO</param>
     /// <returns>TRUE if everything is fine, FALSE if processing should be aborted if possible</returns>
-    public delegate bool ProgressDelegate(IProgressProvider provider, int fileIndex, ulong fileValue, ulong rawSize, ulong rawMaximum, ulong compressedSize);
+    public delegate bool ProgressDelegate(IProgressProvider provider, int currentFileIndex, ulong currentFileSize, ulong filesSize, ulong rawSize, ulong compressedSize);
 
     /// <summary>
     /// Progress feedback interface
@@ -24,7 +24,7 @@ namespace pdj.tiny7z.Archive
         /// <summary>
         /// List of files that are being processed and targetted by the progress report
         /// </summary>
-        IReadOnlyCollection<ArchiveFile> Files
+        IReadOnlyList<ArchiveFile> Files
         {
             get;
         }
@@ -35,6 +35,22 @@ namespace pdj.tiny7z.Archive
         ProgressDelegate ProgressFunc
         {
             get; set;
+        }
+
+        /// <summary>
+        /// Total size of archive, including all files.
+        /// </summary>
+        UInt64 RawTotalSize
+        {
+            get;
+        }
+
+        /// <summary>
+        /// Total size of selected files from archive.
+        /// </summary>
+        UInt64 TotalSize
+        {
+            get;
         }
 
         /// <summary>
@@ -61,7 +77,7 @@ namespace pdj.tiny7z.Archive
         /// <summary>
         /// List of files contained in the opened archive.
         /// </summary>
-        IReadOnlyCollection<ArchiveFile> Files
+        IReadOnlyList<ArchiveFile> Files
         {
             get;
         }
@@ -173,7 +189,7 @@ namespace pdj.tiny7z.Archive
         /// <summary>
         /// List of files in the archive.
         /// </summary>
-        IReadOnlyCollection<ArchiveFile> Files
+        IReadOnlyList<ArchiveFile> Files
         {
             get;
         }
