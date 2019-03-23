@@ -37,6 +37,7 @@ namespace pdj.tiny7z
         static string archiveFileName = string.Empty;
         static string outputPath = string.Empty;
         static List<string> fileNames = new List<string>();
+        static DateTime timer;
 
         static void Main(string[] args)
         {
@@ -73,6 +74,43 @@ namespace pdj.tiny7z
                 }
             }
             Log.Information("All done!");
+        }
+
+        static bool ProgressEvent(Archive.IProgressProvider provider, bool included, int currentFileIndex, ulong currentFileSize, ulong filesSize, ulong rawSize, ulong compressedSize)
+        {
+            if (currentFileIndex >= provider.Files.Count)
+            {
+                string status = (archiveAction == ArchiveAction.Add ? "Compressing" : "Extracting") + ": 100% Done!";
+                status = status + new string(' ', Console.BufferWidth - 1 - status.Length);
+                Console.Write(status);
+                Console.SetCursorPosition(0, Console.CursorTop);
+            }
+            else if (timer == default(DateTime) || DateTime.Now.Subtract(timer).Milliseconds > 250)
+            {
+                timer = DateTime.Now;
+                string status;
+                if (included)
+                {
+                    status = string.Format("File: {0}, {1}%", provider.Files[currentFileIndex].Name, rawSize * 100 / provider.RawTotalSize);
+                }
+                else
+                {
+                    status = string.Format("Skipping: {0}%", rawSize * 100 / provider.RawTotalSize);
+                }
+
+                // formatting
+                if (status.Length >= Console.BufferWidth)
+                {
+                    status = status.Substring(0, Console.BufferWidth - 1);
+                }
+                else
+                {
+                    status = status + new string(' ', Console.BufferWidth - 1 - status.Length);
+                }
+                Console.Write(status);
+                Console.SetCursorPosition(0, Console.CursorTop);
+            }
+            return true;
         }
 
         static void CompressFiles()
@@ -119,49 +157,13 @@ namespace pdj.tiny7z
                 }
 
                 var timer = DateTime.Now;
-                compressor.ProgressDelegate =
-                    (Archive.IProgressProvider provider, bool included, int currentFileIndex, ulong currentFileSize, ulong filesSize, ulong rawSize, ulong compressedSize) =>
-                    {
-                        if (currentFileIndex >= provider.Files.Count)
-                        {
-                            string status = "Compressing: 100% Done!";
-                            status = status + new string(' ', Console.BufferWidth - 1 - status.Length);
-                            Console.SetCursorPosition(0, Console.CursorTop);
-                            Console.Write(status);
-                        }
-                        else if (DateTime.Now.Subtract(timer).Milliseconds > 250)
-                        {
-                            timer = DateTime.Now;
-                            Console.SetCursorPosition(0, Console.CursorTop);
-                            string status;
-                            if (included)
-                            {
-                                status = string.Format("File: {0}, {1}%", provider.Files[currentFileIndex].Name, rawSize * 100 / provider.RawTotalSize);
-                            }
-                            else
-                            {
-                                status = string.Format("Skipping: {0}%", rawSize * 100 / provider.RawTotalSize);
-                            }
-
-                            // formatting
-                            if (status.Length >= Console.BufferWidth)
-                            {
-                                status = status.Substring(0, Console.BufferWidth - 1);
-                            }
-                            else
-                            {
-                                status = status + new string(' ', Console.BufferWidth - 1 - status.Length);
-                            }
-                            Console.Write(status);
-                        }
-                        return true;
-                    };
+                compressor.ProgressDelegate = ProgressEvent;
 
                 var now = DateTime.Now;
                 compressor.Finalize();
-                Console.WriteLine();
                 var ela = DateTime.Now.Subtract(now);
 
+                Console.WriteLine();
                 Log.Information("Compression took {ela}ms.", ela.TotalMilliseconds);
             }
         }
@@ -181,43 +183,7 @@ namespace pdj.tiny7z
                 }
 
                 var timer = DateTime.Now;
-                extractor.ProgressDelegate =
-                    (Archive.IProgressProvider provider, bool included, int currentFileIndex, ulong currentFileSize, ulong filesSize, ulong rawSize, ulong compressedSize) =>
-                    {
-                        if (currentFileIndex >= provider.Files.Count)
-                        {
-                            string status = "Extracting: 100% Done!";
-                            status = status + new string(' ', Console.BufferWidth - 1 - status.Length);
-                            Console.SetCursorPosition(0, Console.CursorTop);
-                            Console.Write(status);
-                        }
-                        else if (DateTime.Now.Subtract(timer).Milliseconds > 250)
-                        {
-                            timer = DateTime.Now;
-                            Console.SetCursorPosition(0, Console.CursorTop);
-                            string status;
-                            if (included)
-                            {
-                                status = string.Format("File: {0}, {1}%", provider.Files[currentFileIndex].Name, rawSize * 100 / provider.RawTotalSize);
-                            }
-                            else
-                            {
-                                status = string.Format("Skipping: {0}%", rawSize * 100 / provider.RawTotalSize);
-                            }
-
-                            // formatting
-                            if (status.Length >= Console.BufferWidth)
-                            {
-                                status = status.Substring(0, Console.BufferWidth - 1);
-                            }
-                            else
-                            {
-                                status = status + new string(' ', Console.BufferWidth - 1 - status.Length);
-                            }
-                            Console.Write(status);
-                        }
-                        return true;
-                    };
+                extractor.ProgressDelegate = ProgressEvent;
 
                 var now = DateTime.Now;
                 if (!fileNames.Any())
@@ -237,9 +203,9 @@ namespace pdj.tiny7z
                         Log.Error(ex, "There was an error attempting to extract file.");
                     }
                 }
+                var ela = DateTime.Now.Subtract(now);
 
                 Console.WriteLine();
-                var ela = DateTime.Now.Subtract(now);
                 Log.Information("Decompression took {ela}ms.", ela.TotalMilliseconds);
             }
         }

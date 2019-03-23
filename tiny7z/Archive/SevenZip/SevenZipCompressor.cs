@@ -40,30 +40,6 @@ namespace pdj.tiny7z.Archive
         }
         #endregion Public Properties
 
-        #region Internal Constructors
-        internal SevenZipCompressor(Stream stream, SevenZipHeader header)
-        {
-            this.stream = stream;
-            this.header = header;
-
-            if (stream == null || !stream.CanWrite)
-                throw new ArgumentNullException("Stream isn't suitable for compression.");
-
-            if (header == null)
-                throw new ArgumentNullException("Header has not been prepared properly.");
-
-            // init file list
-            _Files = new List<SevenZipArchiveFile>();
-            Files = _Files;
-
-            // default values
-            ProgressDelegate = null;
-            CompressHeader = true;
-            PreserveDirectoryStructure = true;
-            Solid = true;
-        }
-        #endregion Internal Constructors
-
         #region Public Methods
         public ICompressor AddDirectory(string inputDirectory, string archiveDirectory = null, bool recursive = true)
         {
@@ -216,6 +192,30 @@ namespace pdj.tiny7z.Archive
             return this;
         }
         #endregion Public Methods
+
+        #region Internal Constructors
+        internal SevenZipCompressor(Stream stream, SevenZipHeader header)
+        {
+            this.stream = stream;
+            this.header = header;
+
+            if (stream == null || !stream.CanWrite)
+                throw new ArgumentNullException("Stream isn't suitable for compression.");
+
+            if (header == null)
+                throw new ArgumentNullException("Header has not been prepared properly.");
+
+            // init file list
+            _Files = new List<SevenZipArchiveFile>();
+            Files = _Files;
+
+            // default values
+            ProgressDelegate = null;
+            CompressHeader = true;
+            PreserveDirectoryStructure = true;
+            Solid = true;
+        }
+        #endregion Internal Constructors
 
         #region Private Fields
         private Stream stream;

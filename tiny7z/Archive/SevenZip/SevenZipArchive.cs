@@ -64,12 +64,12 @@ namespace pdj.tiny7z.Archive
         }
         #endregion Public Constants and Structs
 
-        #region Private Properties
-        SevenZipHeader Header
+        #region Internal Properties
+        internal SevenZipHeader Header
         {
             get; set;
         }
-        #endregion Private Properties
+        #endregion Internal Properties
 
         #region Private Fields
         SignatureHeader signatureHeader;
@@ -118,6 +118,8 @@ namespace pdj.tiny7z.Archive
         /// <returns></returns>
         public override IExtractor Extractor()
         {
+            if (this.stream == null)
+                throw new SevenZipException("SevenZipArchive object is either uninitialized or closed.");
             return new SevenZipExtractor(stream, Header);
         }
 
@@ -127,17 +129,26 @@ namespace pdj.tiny7z.Archive
         /// <returns></returns>
         public override ICompressor Compressor()
         {
+            if (this.stream == null)
+                throw new SevenZipException("SevenZipArchive object is either uninitialized or closed.");
             return new SevenZipCompressor(stream, Header);
         }
 
+        /// <summary>
+        /// Close current archive and stream. Archive is committed after this
+        /// </summary>
         public void Close()
         {
+            this.signatureHeader = new SignatureHeader();
             if (this.stream != null)
             {
                 this.stream.Close();
                 this.stream.Dispose();
                 this.stream = null;
             }
+            this.fileAccess = null;
+            this.Header = null;
+            this.IsValid = false;
         }
 
         /// <summary>
@@ -216,7 +227,7 @@ namespace pdj.tiny7z.Archive
 
                 // initiate header parsing
 
-                Trace.TraceInformation("Parsing 7zip file header");
+                Trace.TraceInformation("Parsing 7zip file header:");
                 Header = new SevenZipHeader(new MemoryStream(buffer));
                 Header.Parse();
 
@@ -228,7 +239,7 @@ namespace pdj.tiny7z.Archive
                     Stream newHeaderStream = new MemoryStream();
                     (new SevenZipStreamsExtractor(stream, Header.EncodedHeader)).Extract(0, newHeaderStream, null);
 
-                    Trace.TraceInformation("Parsing decompressed header.");
+                    Trace.TraceInformation("Parsing decompressed header:");
                     newHeaderStream.Position = 0;
                     SevenZipHeader
                         newHeader = new SevenZipHeader(newHeaderStream);

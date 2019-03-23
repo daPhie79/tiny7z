@@ -6,11 +6,21 @@ using System.IO;
 namespace pdj.tiny7z.Archive
 {
     /// <summary>
+    /// Possible results of a feedback request
+    /// </summary>
+    public enum FeedbackResult
+    {
+        Yes,
+        No,
+        Cancel
+    }
+
+    /// <summary>
     /// This delegate can be used to provide feedback in the middle of a running de/compression action
     /// </summary>
     /// <param name="files">List of files that are requiring feedback to continue</param>
     /// <returns>TRUE or FALSE depending on received feedback</returns>
-    public delegate bool FeedbackNeededDelegate (IEnumerable<ArchiveFile> files);
+    public delegate FeedbackResult FeedbackNeededDelegate (IEnumerable<ArchiveFile> files);
 
     /// <summary>
     /// User progress delegate called by IProgressProvider implementation
@@ -188,6 +198,11 @@ namespace pdj.tiny7z.Archive
         /// Extract multiple files identified by their index in file list and call delegate for each file.
         /// </summary>
         IExtractor ExtractFiles(UInt64[] indices, Func<ArchiveFile, Stream> onStreamRequest, Action<ArchiveFile, Stream> onStreamClose = null);
+
+        /// <summary>
+        /// When this is called, internal values are cleared and the extractor cannot be used anymore.
+        /// </summary>
+        IExtractor Finalize();
     }
 
     /// <summary>

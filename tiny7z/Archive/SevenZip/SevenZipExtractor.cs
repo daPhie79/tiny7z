@@ -54,32 +54,6 @@ namespace pdj.tiny7z.Archive
         }
         #endregion Public Properties
 
-        #region Internal Constructors
-        internal SevenZipExtractor(Stream stream, SevenZipHeader header)
-        {
-            this.stream = stream;
-            this.header = header;
-
-            if (stream == null || !stream.CanRead || stream.Length == 0)
-                throw new ArgumentNullException("Stream isn't suitable for extraction.");
-
-            if (header == null || header.RawHeader == null)
-                throw new ArgumentNullException("Header has not been parsed and/or decompressed properly.");
-
-            // init file lists
-            buildFilesIndex();
-
-            // default values
-            OverwriteDelegate = null;
-            ProgressDelegate = null;
-            AllowFileDeletions = false;
-            OverwriteExistingFiles = false;
-            Password = null;
-            PreserveDirectoryStructure = true;
-            SkipExistingFiles = false;
-        }
-        #endregion Internal Constructors
-
         #region Public Methods
         public void Dump()
         {
@@ -160,6 +134,7 @@ namespace pdj.tiny7z.Archive
 
                 // extraction
                 Trace.TraceInformation($"Filename: `{file.Name}`, file size: `{file.Size} bytes`.");
+                Trace.TraceInformation("Extracting...");
                 var sx = new SevenZipStreamsExtractor(stream, header.RawHeader.MainStreamsInfo, Password);
                 sx.Extract((UInt64)file.UnPackIndex, outputStream, szpp);
             }
@@ -222,7 +197,7 @@ namespace pdj.tiny7z.Archive
             // no file to decompress
             if (!streamIndices.Any())
             {
-                Trace.TraceWarning("No decoding required.");
+                Trace.TraceWarning("ExtractFiles: No decoding required.");
                 return this;
             }
 
@@ -232,6 +207,7 @@ namespace pdj.tiny7z.Archive
                 szpp = new SevenZipProgressProvider(_Files, indices, ProgressDelegate);
 
             // extraction
+            Trace.TraceInformation("Extracting...");
             var sx = new SevenZipStreamsExtractor(stream, header.RawHeader.MainStreamsInfo, Password);
             sx.ExtractMultiple(
                 streamIndices.ToArray(),
@@ -240,7 +216,11 @@ namespace pdj.tiny7z.Archive
                     string fullPath = Path.Combine(outputDirectory, PreserveDirectoryStructure ? file.Name : Path.GetFileName(file.Name));
 
                     Trace.TraceInformation($"File index {index}, filename: {file.Name}, file size: {file.Size}");
-                    return new FileStream(fullPath, FileMode.Create, FileAccess.Write, FileShare.None, 128 * 1024);
+                    return new FileStream(fullPath,
+                        FileMode.Create,
+                        FileAccess.Write,
+                        FileShare.None,
+                        bufferSize);
                 },
                 (ulong index, Stream stream) => {
                     stream.Close();
@@ -283,7 +263,7 @@ namespace pdj.tiny7z.Archive
             // no file to decompress
             if (!streamToFileIndex.Any())
             {
-                Trace.TraceWarning("No decoding required.");
+                Trace.TraceWarning("ExtractFiles: No decoding required.");
                 return this;
             }
 
@@ -293,6 +273,7 @@ namespace pdj.tiny7z.Archive
                 szpp = new SevenZipProgressProvider(_Files, indices, ProgressDelegate);
 
             // extraction
+            Trace.TraceInformation("Extracting...");
             var sx = new SevenZipStreamsExtractor(stream, header.RawHeader.MainStreamsInfo, Password);
             sx.ExtractMultiple(
                 streamIndices.ToArray(),
@@ -302,9 +283,44 @@ namespace pdj.tiny7z.Archive
 
             return this;
         }
+
+        public IExtractor Finalize()
+        {
+            this.stream = null;
+            this.header = null;
+            this._Files = null;
+            return this;
+        }
         #endregion Public Methods
 
+        #region Internal Constructors
+        internal SevenZipExtractor(Stream stream, SevenZipHeader header)
+        {
+            this.stream = stream;
+            this.header = header;
+
+            if (stream == null || !stream.CanRead || stream.Length == 0)
+                throw new ArgumentNullException("Stream isn't suitable for extraction.");
+
+            if (header == null || header.RawHeader == null)
+                throw new ArgumentNullException("Header has not been parsed and/or decompressed properly.");
+
+            // init file lists
+            buildFilesIndex();
+
+            // default values
+            OverwriteDelegate = null;
+            ProgressDelegate = null;
+            AllowFileDeletions = false;
+            OverwriteExistingFiles = false;
+            Password = null;
+            PreserveDirectoryStructure = true;
+            SkipExistingFiles = false;
+        }
+        #endregion Internal Constructors
+
         #region Private Fields
+        private const int bufferSize = 128 * 1024;
         private Stream stream;
         private SevenZipHeader header;
         private SevenZipArchiveFile[] _Files;
@@ -338,9 +354,26 @@ namespace pdj.tiny7z.Archive
             }
             else
             {
-                if (File.Exists(fullPath) && !OverwriteExistingFiles && !SkipExistingFiles)
-                    throw new IOException($"File `{file.Name}` already exists.");
-                if (!File.Exists(fullPath) || OverwriteExistingFiles)
+                FeedbackResult result = FeedbackResult.Yes;
+                if (File.Exists(fullPath))
+                {
+                    if (OverwriteExistingFiles)
+                    {
+                        if (OverwriteDelegate != null)
+                        {
+                            result = OverwriteDelegate(new[] { file });
+                            if (result == FeedbackResult.Cancel)
+                                throw new OperationCanceledException("User feedback cancelled extraction.");
+                        }
+                    }
+                    else
+                    {
+                        if (!SkipExistingFiles)
+                            throw new IOException($"File `{file.Name}` already exists.");
+                        result = FeedbackResult.No;
+                    }
+                }
+                if (result == FeedbackResult.Yes)
                 {
                     // make sure path exists
                     if (!string.IsNullOrEmpty(Path.GetDirectoryName(file.Name)))
@@ -349,16 +382,18 @@ namespace pdj.tiny7z.Archive
                             Directory.CreateDirectory(Path.GetDirectoryName(fullPath));
                     }
 
-                    // preprocess empty files (no data)
-                    if (file.IsEmpty)
+                    // if file is not empty, it will need extraction
+                    if (!file.IsEmpty)
                     {
-                        Trace.TraceInformation($"Creating empty file \"{file.Name}\"");
-                        File.WriteAllBytes(fullPath, new byte[0]);
-                        if (file.Time != null)
-                            File.SetLastWriteTimeUtc(fullPath, (DateTime)file.Time);
-                    }
-                    else // impending data!
+                        Trace.TraceInformation($"File included for extraction: {file.Name}, file size: {file.Size}");
                         return false;
+                    }
+
+                    // create empty file right away
+                    Trace.TraceInformation($"Creating empty file \"{file.Name}\"");
+                    File.WriteAllBytes(fullPath, new byte[0]);
+                    if (file.Time != null)
+                        File.SetLastWriteTimeUtc(fullPath, (DateTime)file.Time);
                 }
                 else
                     // skipping file, so leave it as "processed" to avoid useless decoding
