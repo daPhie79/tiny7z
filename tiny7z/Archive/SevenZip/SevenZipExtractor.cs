@@ -50,7 +50,7 @@ namespace pdj.tiny7z.Archive
         }
         #endregion Public Properties
 
-        #region Public Methods
+        #region Public Methods and Constructor
         public SevenZipExtractor(Stream stream, SevenZipHeader header)
         {
             this.stream = stream;
@@ -110,31 +110,22 @@ namespace pdj.tiny7z.Archive
                 throw new ArgumentOutOfRangeException($"Index `{index}` is out of range.");
 
             SevenZipArchiveFile file = _Files[index];
-
-            if (!Directory.Exists(outputDirectory))
-                Directory.CreateDirectory(outputDirectory);
-
-            if (!processFile(outputDirectory, file))
+            if (!preProcessFile(outputDirectory, file))
             {
                 string fullPath = Path.Combine(outputDirectory, PreserveDirectoryStructure ? file.Name : Path.GetFileName(file.Name));
-                if (File.Exists(fullPath) && !OverwriteExistingFiles && !SkipExistingFiles)
-                    throw new IOException($"File `{file.Name}` already exists.");
-                if (!File.Exists(fullPath) || OverwriteExistingFiles)
-                {
-                    Trace.TraceInformation($"Filename: `{file.Name}`, file size: `{file.Size} bytes`.");
 
-                    SevenZipProgressProvider szpp = null;
-                    if (ProgressDelegate != null)
-                        szpp = new SevenZipProgressProvider(_Files, new[] { index }, ProgressDelegate);
+                // progress provider
+                SevenZipProgressProvider szpp = null;
+                if (ProgressDelegate != null)
+                    szpp = new SevenZipProgressProvider(_Files, new[] { index }, ProgressDelegate);
 
-                    var sx = new SevenZipStreamsExtractor(stream, header.RawHeader.MainStreamsInfo, Password);
-                    using (Stream fileStream = File.Create(fullPath))
-                        sx.Extract((UInt64)file.UnPackIndex, fileStream, szpp);
-                    if (file.Time != null)
-                        File.SetLastWriteTimeUtc(fullPath, (DateTime)file.Time);
-                }
-                else
-                    Trace.TraceWarning($"File `{file.Name} already exists, skipping.");
+                // extraction
+                Trace.TraceInformation($"Filename: `{file.Name}`, file size: `{file.Size} bytes`.");
+                var sx = new SevenZipStreamsExtractor(stream, header.RawHeader.MainStreamsInfo, Password);
+                using (Stream fileStream = File.Create(fullPath))
+                    sx.Extract((UInt64)file.UnPackIndex, fileStream, szpp);
+                if (file.Time != null)
+                    File.SetLastWriteTimeUtc(fullPath, (DateTime)file.Time);
             }
 
             return this;
@@ -144,24 +135,23 @@ namespace pdj.tiny7z.Archive
         {
             if (index >= (ulong)_Files.LongLength)
                 throw new ArgumentOutOfRangeException($"Index `{index}` is out of range.");
-
             if (outputStream == null || !outputStream.CanWrite)
                 throw new ArgumentException($"Stream `{nameof(outputStream)}` is invalid or cannot be written to.");
 
             SevenZipArchiveFile file = _Files[index];
-
             if (file.IsEmpty)
             {
                 Trace.TraceWarning($"Filename: {file.Name} is a directory, empty file or anti file, nothing to output to stream.");
             }
             else
             {
-                Trace.TraceInformation($"Filename: `{file.Name}`, file size: `{file.Size} bytes`.");
-
+                // progress provider
                 SevenZipProgressProvider szpp = null;
                 if (ProgressDelegate != null)
                     szpp = new SevenZipProgressProvider(_Files, new[] { index }, ProgressDelegate);
 
+                // extraction
+                Trace.TraceInformation($"Filename: `{file.Name}`, file size: `{file.Size} bytes`.");
                 var sx = new SevenZipStreamsExtractor(stream, header.RawHeader.MainStreamsInfo, Password);
                 sx.Extract((UInt64)file.UnPackIndex, outputStream, szpp);
             }
@@ -206,9 +196,7 @@ namespace pdj.tiny7z.Archive
             if (indices.Any(index => index >= (ulong)_Files.LongLength))
                 throw new ArgumentOutOfRangeException("An index given in `indices[]` array is out of range.");
 
-            if (!Directory.Exists(outputDirectory))
-                Directory.CreateDirectory(outputDirectory);
-
+            // preprocess files and keep track of streams to decompress
             var streamToFileIndex = new Dictionary<ulong, ulong>();
             var streamIndices = new List<ulong>();
             ulong streamIndex = 0;
@@ -216,37 +204,36 @@ namespace pdj.tiny7z.Archive
             {
                 if (!indices.Any() || Array.IndexOf(indices, i) != -1)
                 {
-                    if (!processFile(outputDirectory, _Files[i]))
-                        if (indices.Any())
-                            streamIndices.Add(streamIndex);
+                    if (!preProcessFile(outputDirectory, _Files[i]))
+                        streamIndices.Add(streamIndex);
                 }
                 if (!_Files[i].IsEmpty)
                     streamToFileIndex[streamIndex++] = i;
             }
 
+            // no file to decompress
+            if (!streamIndices.Any())
+            {
+                Trace.TraceWarning("No decoding required.");
+                return this;
+            }
+
+            // progress provider
             SevenZipProgressProvider szpp = null;
             if (ProgressDelegate != null)
                 szpp = new SevenZipProgressProvider(_Files, indices, ProgressDelegate);
 
+            // extraction
             var sx = new SevenZipStreamsExtractor(stream, header.RawHeader.MainStreamsInfo, Password);
             sx.ExtractMultiple(
                 streamIndices.ToArray(),
-
                 (ulong index) => {
                     SevenZipArchiveFile file = _Files[streamToFileIndex[index]];
                     string fullPath = Path.Combine(outputDirectory, PreserveDirectoryStructure ? file.Name : Path.GetFileName(file.Name));
 
                     Trace.TraceInformation($"File index {index}, filename: {file.Name}, file size: {file.Size}");
-
-                    if (File.Exists(fullPath) && !OverwriteExistingFiles && !SkipExistingFiles)
-                        throw new IOException($"File `{file.Name}` already exists.");
-                    if (!File.Exists(fullPath) || OverwriteExistingFiles)
-                        return new FileStream(fullPath, FileMode.Create, FileAccess.Write, FileShare.None, 128 * 1024);
-
-                    Trace.TraceWarning($"File `{file.Name} already exists, skipping.");
-                    return null;
+                    return new FileStream(fullPath, FileMode.Create, FileAccess.Write, FileShare.None, 128 * 1024);
                 },
-
                 (ulong index, Stream stream) => {
                     stream.Close();
                     SevenZipArchiveFile file = _Files[streamToFileIndex[index]];
@@ -264,6 +251,7 @@ namespace pdj.tiny7z.Archive
             if (indices.Any(index => index >= (ulong)_Files.LongLength))
                 throw new ArgumentOutOfRangeException("An index given in `indices[]` array is out of range.");
 
+            // preprocess files and keep track of streams to decompress
             var streamToFileIndex = new Dictionary<ulong, ulong>();
             var streamIndices = new List<ulong>();
             ulong streamIndex = 0;
@@ -284,20 +272,29 @@ namespace pdj.tiny7z.Archive
                     streamToFileIndex[streamIndex++] = i;
             }
 
+            // no file to decompress
+            if (!streamToFileIndex.Any())
+            {
+                Trace.TraceWarning("No decoding required.");
+                return this;
+            }
+
+            // progress provider
             SevenZipProgressProvider szpp = null;
             if (ProgressDelegate != null)
                 szpp = new SevenZipProgressProvider(_Files, indices, ProgressDelegate);
 
+            // extraction
             var sx = new SevenZipStreamsExtractor(stream, header.RawHeader.MainStreamsInfo, Password);
             sx.ExtractMultiple(
-                indices == null ? null : streamIndices.ToArray(),
+                streamIndices.ToArray(),
                 (ulong index) => onStreamRequest(_Files[streamToFileIndex[index]]),
                 (ulong index, Stream stream) => onStreamClose?.Invoke(_Files[streamToFileIndex[index]], stream),
                 szpp);
 
             return this;
         }
-        #endregion Public Methods
+        #endregion Public Methods and Constructor
 
         #region Private Fields
         Stream stream;
@@ -306,7 +303,7 @@ namespace pdj.tiny7z.Archive
         #endregion Private Fields
 
         #region Private Methods
-        bool processFile(string outputDirectory, SevenZipArchiveFile file)
+        bool preProcessFile(string outputDirectory, SevenZipArchiveFile file)
         {
             string fullPath = Path.Combine(outputDirectory, PreserveDirectoryStructure ? file.Name : Path.GetFileName(file.Name));
             if (file.IsDeleted)
@@ -331,24 +328,33 @@ namespace pdj.tiny7z.Archive
                         Directory.SetLastWriteTimeUtc(fullPath, (DateTime)file.Time);
                 }
             }
-            else if (file.IsEmpty)
+            else
             {
                 if (File.Exists(fullPath) && !OverwriteExistingFiles && !SkipExistingFiles)
                     throw new IOException($"File `{file.Name}` already exists.");
                 if (!File.Exists(fullPath) || OverwriteExistingFiles)
                 {
-                    Trace.TraceInformation($"Creating empty file \"{file.Name}\"");
-                    File.WriteAllBytes(fullPath, new byte[0]);
-                    if (file.Time != null)
-                        File.SetLastWriteTimeUtc(fullPath, (DateTime)file.Time);
+                    // make sure path exists
+                    if (!string.IsNullOrEmpty(Path.GetDirectoryName(file.Name)))
+                    {
+                        if (!Directory.Exists(Path.GetDirectoryName(fullPath)))
+                            Directory.CreateDirectory(Path.GetDirectoryName(fullPath));
+                    }
+
+                    // preprocess empty files (no data)
+                    if (file.IsEmpty)
+                    {
+                        Trace.TraceInformation($"Creating empty file \"{file.Name}\"");
+                        File.WriteAllBytes(fullPath, new byte[0]);
+                        if (file.Time != null)
+                            File.SetLastWriteTimeUtc(fullPath, (DateTime)file.Time);
+                    }
+                    else // impending data!
+                        return false;
                 }
                 else
+                    // skipping file, so leave it as "processed" to avoid useless decoding
                     Trace.TraceWarning($"File `{file.Name}` already exists. Skipping.");
-            }
-            else
-            {
-                // regular file, not "processed"
-                return false;
             }
 
             // it's been "processed", no further processing necessary

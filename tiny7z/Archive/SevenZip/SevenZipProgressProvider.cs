@@ -33,7 +33,7 @@ namespace pdj.tiny7z.Archive
         #region Public Methods (IProgressProvider)
         public void IncreaseOffsetBy(long rawSizeOffset, long compressedSizeOffset)
         {
-            rawOffset = checked((ulong)((long)rawOffset + compressedSizeOffset));
+            rawOffset = checked((ulong)((long)rawOffset + rawSizeOffset));
             compressedOffset = checked((ulong)((long)compressedOffset + compressedSizeOffset));
         }
 
@@ -52,7 +52,7 @@ namespace pdj.tiny7z.Archive
                         break;
                     }
                     lastRawOffset += files[lastFileIndex].Size ?? 0;
-                    if (indices == null || indices.IndexOf((ulong)lastFileIndex) != -1)
+                    if (matches[lastFileIndex])
                         lastFileOffset += files[lastFileIndex].Size ?? 0;
                 }
 
@@ -61,6 +61,7 @@ namespace pdj.tiny7z.Archive
                 ulong currentFileSize = rawOffset + rawSize - lastRawOffset;
                 return ProgressFunc(
                     this,
+                    matches[lastFileIndex],
                     lastFileIndex,
                     currentFileSize,
                     lastFileOffset + currentFileSize,
@@ -82,17 +83,28 @@ namespace pdj.tiny7z.Archive
         public SevenZipProgressProvider(IList<SevenZipArchiveFile> files, IList<UInt64> indices, ProgressDelegate progressFunc = null)
         {
             this.files = files;
-            this.indices = indices;
+            if (indices.Any())
+            {
+                this.matches = new bool[this.files.Count + 1];
+                foreach (var index in indices)
+                    this.matches[index] = true;
+            }
+            else
+            {
+                this.matches = Enumerable.Repeat(true, this.files.Count + 1).ToArray();
+                this.matches[this.files.Count] = false;
+            }
+
             Files = new ReadOnlyCollection<SevenZipArchiveFile>(this.files);
             ProgressFunc = progressFunc;
             RawTotalSize = (ulong)this.files.Sum(f => (decimal)(f.Size ?? 0));
-            TotalSize = this.indices == null ? RawTotalSize : (ulong)this.indices.Select(i => this.files[(int)i]).Sum(f => (decimal)(f.Size ?? 0));
+            TotalSize = !indices.Any() ? RawTotalSize : (ulong)indices.Select(i => this.files[(int)i]).Sum(f => (decimal)(f.Size ?? 0));
         }
         #endregion
 
         #region Private Fields
         IList<SevenZipArchiveFile> files;
-        IList<UInt64> indices;
+        bool[] matches;
         int lastFileIndex = 0;
         ulong lastFileOffset = 0;
         ulong rawOffset = 0;

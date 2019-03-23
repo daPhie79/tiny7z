@@ -120,7 +120,10 @@ namespace pdj.tiny7z.Archive
 
                 // handle progress offsets (in case compressor is called multiple times, with non-solid archives for instance)
                 if (progressProvider != null)
+                {
                     progressProvider.IncreaseOffsetBy((long)ps.Folder.UnPackSizes[0], (long)ps.Sizes[0]);
+                    progressProvider.SetProgress(0, 0);
+                }
             }
 
             return ps;

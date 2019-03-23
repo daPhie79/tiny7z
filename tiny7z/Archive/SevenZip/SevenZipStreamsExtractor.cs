@@ -30,6 +30,10 @@ namespace pdj.tiny7z.Archive
 
         public void ExtractMultiple(ulong[] outStreamIndices, Func<ulong, Stream> onStreamRequest, Action<ulong, Stream> onStreamClose, SevenZipProgressProvider progressProvider)
         {
+            // simplify
+            if (outStreamIndices.Any() && streamsInfo.SubStreamsInfo != null && ((ulong)outStreamIndices.LongLength == streamsInfo.SubStreamsInfo.NumUnPackStreamsTotal))
+                outStreamIndices = new ulong[0];
+
             // sequentially scan through folders and unpacked streams
             ulong index = 0;
             ulong packIndex = 0;
@@ -57,7 +61,7 @@ namespace pdj.tiny7z.Archive
                     for (ulong j = 0; j < numStreams; ++j, ++index)
                         matches[j] = (!outStreamIndices.Any() || outStreamIndices.Contains(index));
 
-                    if (matches.Any(match => match == true))
+                    if (matches.Any(m => m == true))
                     {
                         extractMultipleFromFolder(osiOffset, matches, i, packIndex, onStreamRequest, onStreamClose, progressProvider);
                         processed = true;
@@ -65,12 +69,11 @@ namespace pdj.tiny7z.Archive
                 }
                 packIndex += streamsInfo.UnPackInfo.Folders[i].NumPackedStreams;
 
-                // add unpack offset to progress provider if folder was skipped entirely
-                if (!processed)
+                // add unpack size to offset to progress provider if folder was skipped entirely
+                if (!processed && progressProvider != null)
                 {
-                    ulong unPackSize = streamsInfo.UnPackInfo.Folders[i].GetUnPackSize();
-                    if (progressProvider != null)
-                        progressProvider.IncreaseOffsetBy((long)unPackSize, 0);
+                    progressProvider.IncreaseOffsetBy((long)streamsInfo.UnPackInfo.Folders[i].GetUnPackSize(), 0);
+                    progressProvider.SetProgress(0, 0);
                 }
             }
         }
@@ -94,15 +97,23 @@ namespace pdj.tiny7z.Archive
         {
             using (var decoder = createDecoderStream(folderIndex, packIndex))
             {
+                ulong unPackSize = streamsInfo.UnPackInfo.Folders[folderIndex].GetUnPackSize();
+                ulong neededUnPackSize = 0;
+
                 // define output stream
                 Stream outStream = null;
                 if (matches == null)
                 {
+                    // single stream
                     outStream = onStreamRequest(outputStreamIndexOffset);
+                    neededUnPackSize = unPackSize;
                 }
                 else
                 {
+                    // find actual number of needed streams
                     ulong numStreams = streamsInfo.SubStreamsInfo.NumUnPackStreamsInFolders[folderIndex];
+                    ulong lastStream = checked((ulong)Array.LastIndexOf(matches, true));
+                    numStreams = lastStream + 1;
 
                     // create complex multistream
                     MultiStream multi = new MultiStream(numStreams,
@@ -125,19 +136,25 @@ namespace pdj.tiny7z.Archive
                                 onStreamClose(outputStreamIndexOffset + innerIndex, stream);
                         });
 
-                    // set sizes in multistream
-                    for (ulong i = 0; i < numStreams; ++i)
-                        multi.Sizes[i] = (long)streamsInfo.SubStreamsInfo.UnPackSizes[(int)(outputStreamIndexOffset + i)];
+                    // set sizes in multistream and define needed data size
+                    for (ulong i = 0; i < numStreams; i++)
+                    {
+                        ulong ss = streamsInfo.SubStreamsInfo.UnPackSizes[(int)(outputStreamIndexOffset + i)];
+                        multi.Sizes[i] = (long)ss;
+                        neededUnPackSize += ss;
+                    }
 
                     // set new stream as output stream
                     outStream = multi;
                 }
 
                 // actual extraction is done here (some decoder streams require knowing output size in advance, like PPMd)
-                ulong unPackSize = streamsInfo.UnPackInfo.Folders[folderIndex].GetUnPackSize();
-                Util.TransferTo(decoder, outStream, (long)unPackSize, progressProvider);
+                Util.TransferTo(decoder, outStream, (long)neededUnPackSize, progressProvider);
                 if (progressProvider != null)
+                {
                     progressProvider.IncreaseOffsetBy((long)unPackSize, 0);
+                    progressProvider.SetProgress(0, 0);
+                }
 
                 // call stream close delegate if only one stream and delegate present
                 if (matches == null)

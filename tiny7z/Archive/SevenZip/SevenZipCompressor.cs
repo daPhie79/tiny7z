@@ -190,7 +190,7 @@ namespace pdj.tiny7z.Archive
                 // progress object
                 SevenZipProgressProvider szpp = null;
                 if (ProgressDelegate != null)
-                    szpp = new SevenZipProgressProvider(_Files, null, ProgressDelegate);
+                    szpp = new SevenZipProgressProvider(_Files, new ulong[0], ProgressDelegate);
 
                 // compress files
                 this.header.RawHeader.MainStreamsInfo = new SevenZipHeader.StreamsInfo();

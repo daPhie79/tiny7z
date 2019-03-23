@@ -5,7 +5,6 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace pdj.tiny7z
 {
@@ -72,7 +71,6 @@ namespace pdj.tiny7z
                 }
             }
             Log.Information("All done!");
-            Console.ReadKey();
         }
 
         static void CompressFiles()
@@ -120,13 +118,30 @@ namespace pdj.tiny7z
 
                 var timer = DateTime.Now;
                 compressor.ProgressDelegate =
-                    (Archive.IProgressProvider provider, int currentFileIndex, ulong currentFileSize, ulong filesSize, ulong rawSize, ulong compressedSize) =>
+                    (Archive.IProgressProvider provider, bool included, int currentFileIndex, ulong currentFileSize, ulong filesSize, ulong rawSize, ulong compressedSize) =>
                     {
-                        if (DateTime.Now.Subtract(timer).Milliseconds > 500)
+                        if (currentFileIndex >= provider.Files.Count)
+                        {
+                            string status = "Compressing: 100% Done!";
+                            status = status + new string(' ', Console.BufferWidth - 1 - status.Length);
+                            Console.SetCursorPosition(0, Console.CursorTop);
+                            Console.Write(status);
+                        }
+                        else if (DateTime.Now.Subtract(timer).Milliseconds > 250)
                         {
                             timer = DateTime.Now;
                             Console.SetCursorPosition(0, Console.CursorTop);
-                            string status = string.Format("File: {0}, {1}%", provider.Files[currentFileIndex].Name, rawSize * 100 / provider.RawTotalSize);
+                            string status;
+                            if (included)
+                            {
+                                status = string.Format("File: {0}, {1}%", provider.Files[currentFileIndex].Name, rawSize * 100 / provider.RawTotalSize);
+                            }
+                            else
+                            {
+                                status = string.Format("Skipping: {0}%", rawSize * 100 / provider.RawTotalSize);
+                            }
+
+                            // formatting
                             if (status.Length >= Console.BufferWidth)
                             {
                                 status = status.Substring(0, Console.BufferWidth - 1);
@@ -165,13 +180,30 @@ namespace pdj.tiny7z
 
                 var timer = DateTime.Now;
                 extractor.ProgressDelegate =
-                    (Archive.IProgressProvider provider, int currentFileIndex, ulong currentFileSize, ulong filesSize, ulong rawSize, ulong compressedSize) =>
+                    (Archive.IProgressProvider provider, bool included, int currentFileIndex, ulong currentFileSize, ulong filesSize, ulong rawSize, ulong compressedSize) =>
                     {
-                        if (DateTime.Now.Subtract(timer).Milliseconds > 500)
+                        if (currentFileIndex >= provider.Files.Count)
+                        {
+                            string status = "Extracting: 100% Done!";
+                            status = status + new string(' ', Console.BufferWidth - 1 - status.Length);
+                            Console.SetCursorPosition(0, Console.CursorTop);
+                            Console.Write(status);
+                        }
+                        else if (DateTime.Now.Subtract(timer).Milliseconds > 250)
                         {
                             timer = DateTime.Now;
                             Console.SetCursorPosition(0, Console.CursorTop);
-                            string status = string.Format("File: {0}, {1}%", provider.Files[currentFileIndex].Name, rawSize * 100 / provider.RawTotalSize);
+                            string status;
+                            if (included)
+                            {
+                                status = string.Format("File: {0}, {1}%", provider.Files[currentFileIndex].Name, rawSize * 100 / provider.RawTotalSize);
+                            }
+                            else
+                            {
+                                status = string.Format("Skipping: {0}%", rawSize * 100 / provider.RawTotalSize);
+                            }
+
+                            // formatting
                             if (status.Length >= Console.BufferWidth)
                             {
                                 status = status.Substring(0, Console.BufferWidth - 1);
@@ -246,8 +278,8 @@ namespace pdj.tiny7z
                                 outputPath = args[i];
                                 if (!Directory.Exists(outputPath))
                                 {
-                                    Log.Error("Invalid output path: {OutputPath}", outputPath);
-                                    error = true;
+                                    Log.Information("Creating output path: {OutputPath}", outputPath);
+                                    Directory.CreateDirectory(outputPath);
                                 }
                                 else
                                 {

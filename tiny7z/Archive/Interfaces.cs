@@ -8,13 +8,14 @@ namespace pdj.tiny7z.Archive
     /// User progress delegate called by IProgressProvider implementation
     /// </summary>
     /// <param name="provider">Reference to the IProgressProvider object calling this. Allows accessing the list of files</param>
+    /// <param name="included">This will be set to TRUE if current file is being de/compressed, or if it's just being processed to get to other files.</param>
     /// <param name="currentFileIndex">Index of file referenced from the list of files</param>
     /// <param name="currentFileSize">Current size of file having been processed</param>
     /// <param name="filesSize">Current size of cumulative files having been processed</param>
     /// <param name="rawSize">Current size of total data having been processed</param>
     /// <param name="compressedSize">Compressed size of data. If unavailable, this will be ZERO</param>
     /// <returns>TRUE if everything is fine, FALSE if processing should be aborted if possible</returns>
-    public delegate bool ProgressDelegate(IProgressProvider provider, int currentFileIndex, ulong currentFileSize, ulong filesSize, ulong rawSize, ulong compressedSize);
+    public delegate bool ProgressDelegate(IProgressProvider provider, bool included, int currentFileIndex, ulong currentFileSize, ulong filesSize, ulong rawSize, ulong compressedSize);
 
     /// <summary>
     /// Progress feedback interface
