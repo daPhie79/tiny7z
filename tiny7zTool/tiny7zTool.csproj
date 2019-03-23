@@ -62,6 +62,9 @@
     <PackageReference Include="Serilog.Sinks.Console">
       <Version>3.1.1</Version>
     </PackageReference>
+    <PackageReference Include="SerilogTraceListener">
+      <Version>3.1.0</Version>
+    </PackageReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

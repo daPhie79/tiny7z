@@ -1,4 +1,5 @@
-﻿using System;
+﻿using pdj.tiny7z.Common;
+using System;
 
 namespace pdj.tiny7z.Archive
 {
@@ -7,7 +8,7 @@ namespace pdj.tiny7z.Archive
     /// </summary>
     public class SevenZipException : Exception
     {
-        public SevenZipException(string message)
+        internal SevenZipException(string message)
             : base(message)
         {
         }

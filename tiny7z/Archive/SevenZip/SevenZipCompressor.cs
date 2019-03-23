@@ -1,6 +1,5 @@
 ﻿using pdj.tiny7z.Common;
 using System;
-using System.Collections.ObjectModel;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -41,8 +40,8 @@ namespace pdj.tiny7z.Archive
         }
         #endregion Public Properties
 
-        #region Public Methods
-        public SevenZipCompressor(Stream stream, SevenZipHeader header)
+        #region Internal Constructors
+        internal SevenZipCompressor(Stream stream, SevenZipHeader header)
         {
             this.stream = stream;
             this.header = header;
@@ -63,7 +62,9 @@ namespace pdj.tiny7z.Archive
             PreserveDirectoryStructure = true;
             Solid = true;
         }
+        #endregion Internal Constructors
 
+        #region Public Methods
         public ICompressor AddDirectory(string inputDirectory, string archiveDirectory = null, bool recursive = true)
         {
             Trace.TraceInformation($"Adding files from directory `{inputDirectory}`.");
@@ -223,7 +224,7 @@ namespace pdj.tiny7z.Archive
         #endregion Private Fields
 
         #region Private Methods
-        void compressFilesSolid(ulong numStreams, Dictionary<ulong, ulong> streamToFileIndex, SevenZipProgressProvider progressProvider)
+        private void compressFilesSolid(ulong numStreams, Dictionary<ulong, ulong> streamToFileIndex, SevenZipProgressProvider progressProvider)
         {
             var sc = new SevenZipStreamsCompressor(stream);
             sc.Method = Compression.Registry.Method.LZMA;
@@ -274,7 +275,7 @@ namespace pdj.tiny7z.Archive
             }
         }
 
-        void compressFilesNonSolid(ulong numStreams, Dictionary<ulong, ulong> streamToFileIndex, SevenZipProgressProvider progressProvider)
+        private void compressFilesNonSolid(ulong numStreams, Dictionary<ulong, ulong> streamToFileIndex, SevenZipProgressProvider progressProvider)
         {
             var sc = new SevenZipStreamsCompressor(stream);
             sc.Method = Compression.Registry.Method.LZMA;
@@ -330,7 +331,7 @@ namespace pdj.tiny7z.Archive
             }
         }
 
-        void writeHeaders()
+        private void writeHeaders()
         {
             // current position is defined as end of packed streams and beginning of header
             long endOfPackedStreamsPosition = this.stream.Position;
@@ -416,7 +417,7 @@ namespace pdj.tiny7z.Archive
             stream.Flush();
         }
 
-        void buildFilesInfo()
+        private void buildFilesInfo()
         {
             // scan files for empty streams and files (directories and zero-length files)
 

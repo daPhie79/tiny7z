@@ -11,23 +11,12 @@ namespace pdj.tiny7z.Common
         /// <summary>
         /// Access this once all stream has been read and it will be the stream's CRC32 value.
         /// </summary>
-        public uint Result
-        {
-            get => this.crc.Result;
-        }
-
-        private CRC crc;
-        private Stream internalStream;
-        private bool leaveOpen;
+        public uint Result => this.crc.Result;
 
         public override bool CanRead => internalStream is Stream && internalStream.CanRead;
-
         public override bool CanWrite => internalStream is Stream && internalStream.CanWrite;
-
         public override bool CanSeek => false;
-
         public override long Length => internalStream is Stream ? internalStream.Length : -1;
-
         public override long Position
         {
             get => internalStream is Stream ? internalStream.Position : -1;
@@ -42,11 +31,6 @@ namespace pdj.tiny7z.Common
             leaveOpen = true;
         }
 
-        public CRCStream(Stream internalStream, bool leaveOpen = true)
-            : this(internalStream, null, leaveOpen)
-        {
-        }
-
         public CRCStream(Stream internalStream, CRC crc, bool leaveOpen = true)
             : base()
         {
@@ -54,6 +38,15 @@ namespace pdj.tiny7z.Common
             this.internalStream = internalStream;
             this.leaveOpen = leaveOpen;
         }
+
+        public CRCStream(Stream internalStream, bool leaveOpen = true)
+            : this(internalStream, null, leaveOpen)
+        {
+        }
+
+        private CRC crc;
+        private Stream internalStream;
+        private bool leaveOpen;
 
         public override void Flush()
         {

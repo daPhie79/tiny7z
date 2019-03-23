@@ -4,31 +4,39 @@ using System.Diagnostics;
 using System.Linq;
 using System.IO;
 using System.Runtime.InteropServices;
-using ManagedLzma.LZMA.Master;
 
 namespace pdj.tiny7z.Archive
 {
-    class SevenZipStreamsExtractor : Compression.IPasswordProvider
+    internal class SevenZipStreamsExtractor : Compression.IPasswordProvider
     {
-        #region Public Constructor and Methods
-        public SevenZipStreamsExtractor(Stream stream, SevenZipHeader.StreamsInfo streamsInfo, string password = null)
+        #region Internal Constructor
+        internal SevenZipStreamsExtractor(Stream stream, SevenZipHeader.StreamsInfo streamsInfo, string password = null)
         {
             this.password = password;
             this.stream = stream;
             this.streamsInfo = streamsInfo;
         }
+        #endregion Internal Constructor
 
-        public void Extract(ulong outStreamIndex, Stream outStream, SevenZipProgressProvider progressProvider)
+        #region Public Methods (Interfaces)
+        public string CryptoGetTextPassword()
+        {
+            return password ?? string.Empty;
+        }
+        #endregion Public Methods (Interfaces)
+
+        #region Internal Methods
+        internal void Extract(ulong outStreamIndex, Stream outStream, SevenZipProgressProvider progressProvider)
         {
             ExtractMultiple(new ulong[] { outStreamIndex }, (ulong i) => outStream, null, progressProvider);
         }
 
-        public void ExtractAll(Func<ulong, Stream> onStreamRequest, Action<ulong, Stream> onStreamClose, SevenZipProgressProvider progressProvider)
+        internal void ExtractAll(Func<ulong, Stream> onStreamRequest, Action<ulong, Stream> onStreamClose, SevenZipProgressProvider progressProvider)
         {
             ExtractMultiple(new ulong[0], onStreamRequest, onStreamClose, progressProvider);
         }
 
-        public void ExtractMultiple(ulong[] outStreamIndices, Func<ulong, Stream> onStreamRequest, Action<ulong, Stream> onStreamClose, SevenZipProgressProvider progressProvider)
+        internal void ExtractMultiple(ulong[] outStreamIndices, Func<ulong, Stream> onStreamRequest, Action<ulong, Stream> onStreamClose, SevenZipProgressProvider progressProvider)
         {
             // simplify
             if (outStreamIndices.Any() && streamsInfo.SubStreamsInfo != null && ((ulong)outStreamIndices.LongLength == streamsInfo.SubStreamsInfo.NumUnPackStreamsTotal))
@@ -77,19 +85,12 @@ namespace pdj.tiny7z.Archive
                 }
             }
         }
-
-        #region Compression.IPasswordProvider
-        public string CryptoGetTextPassword()
-        {
-            return password ?? string.Empty;
-        }
-        #endregion Compression.IPasswordProvider
-        #endregion Public Constructor and Methods
+        #endregion Internal Methods
 
         #region Private Fields
-        string password;
-        Stream stream;
-        SevenZipHeader.StreamsInfo streamsInfo;
+        private string password;
+        private Stream stream;
+        private SevenZipHeader.StreamsInfo streamsInfo;
         #endregion Private Fields
 
         #region Private Methods

@@ -18,14 +18,14 @@ namespace pdj.tiny7z.Common
             onCloseStream?.Invoke((ulong)currentIndex, internalStream);
         }
 
-        private Func<ulong, Stream> onNextStream;
-        private Action<ulong, Stream> onCloseStream;
-
         public MultiStream(UInt64 numStreams, Func<ulong, Stream> onNextStream, Action<ulong, Stream> onCloseStream = null)
             : base(numStreams)
         {
             this.onNextStream = onNextStream;
             this.onCloseStream = onCloseStream;
         }
+
+        private Func<ulong, Stream> onNextStream;
+        private Action<ulong, Stream> onCloseStream;
     }
 }

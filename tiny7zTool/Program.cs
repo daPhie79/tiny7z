@@ -48,6 +48,8 @@ namespace pdj.tiny7z
                 .WriteTo.Console()
                 .CreateLogger();
 
+            System.Diagnostics.Trace.Listeners.Add(new SerilogTraceListener.SerilogTraceListener());
+
             Log.Logger.Information("tiny7zTool v{Version} Starting.", AppVersion);
 
             bool proceed = ProcessCommandLine(args);

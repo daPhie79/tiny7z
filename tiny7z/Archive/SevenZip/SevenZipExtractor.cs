@@ -1,6 +1,5 @@
 ﻿using pdj.tiny7z.Common;
 using System;
-using System.Collections.ObjectModel;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -17,6 +16,11 @@ namespace pdj.tiny7z.Archive
         public IReadOnlyList<ArchiveFile> Files
         {
             get; private set;
+        }
+
+        public FeedbackNeededDelegate OverwriteDelegate
+        {
+            get; set;
         }
 
         public ProgressDelegate ProgressDelegate
@@ -50,8 +54,8 @@ namespace pdj.tiny7z.Archive
         }
         #endregion Public Properties
 
-        #region Public Methods and Constructor
-        public SevenZipExtractor(Stream stream, SevenZipHeader header)
+        #region Internal Constructors
+        internal SevenZipExtractor(Stream stream, SevenZipHeader header)
         {
             this.stream = stream;
             this.header = header;
@@ -66,13 +70,17 @@ namespace pdj.tiny7z.Archive
             buildFilesIndex();
 
             // default values
+            OverwriteDelegate = null;
+            ProgressDelegate = null;
             AllowFileDeletions = false;
             OverwriteExistingFiles = false;
             Password = null;
             PreserveDirectoryStructure = true;
             SkipExistingFiles = false;
         }
+        #endregion Internal Constructors
 
+        #region Public Methods
         public void Dump()
         {
             // TODO
@@ -294,16 +302,16 @@ namespace pdj.tiny7z.Archive
 
             return this;
         }
-        #endregion Public Methods and Constructor
+        #endregion Public Methods
 
         #region Private Fields
-        Stream stream;
-        SevenZipHeader header;
-        SevenZipArchiveFile[] _Files;
+        private Stream stream;
+        private SevenZipHeader header;
+        private SevenZipArchiveFile[] _Files;
         #endregion Private Fields
 
         #region Private Methods
-        bool preProcessFile(string outputDirectory, SevenZipArchiveFile file)
+        private bool preProcessFile(string outputDirectory, SevenZipArchiveFile file)
         {
             string fullPath = Path.Combine(outputDirectory, PreserveDirectoryStructure ? file.Name : Path.GetFileName(file.Name));
             if (file.IsDeleted)
@@ -361,7 +369,7 @@ namespace pdj.tiny7z.Archive
             return true;
         }
 
-        long findFileIndex(string Name, bool exactPath)
+        private long findFileIndex(string Name, bool exactPath)
         {
             for (long i = 0; i < _Files.LongLength; i++)
                 if ((exactPath && (_Files[i].Name == Name)) || (!exactPath && (Path.GetFileName(Name) == Path.GetFileName(_Files[i].Name))))
@@ -369,7 +377,7 @@ namespace pdj.tiny7z.Archive
             return -1;
         }
 
-        void buildFilesIndex()
+        private void buildFilesIndex()
         {
             // build empty index
 

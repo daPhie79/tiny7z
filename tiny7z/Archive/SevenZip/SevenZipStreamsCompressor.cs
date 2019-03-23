@@ -7,28 +7,35 @@ using System.Linq;
 
 namespace pdj.tiny7z.Archive
 {
-    class SevenZipStreamsCompressor
+    internal class SevenZipStreamsCompressor
     {
-        public class PackedStream
+        #region Internal Classes
+        internal class PackedStream
         {
             public UInt64 NumStreams;
             public UInt64[] Sizes;
             public UInt32?[] CRCs;
             public SevenZipHeader.Folder Folder;
         }
+        #endregion Internal Classes
 
-        public Compression.Registry.Method? Method
+        #region Internal Properties
+        internal Compression.Registry.Method? Method
         {
             get; set;
         }
+        #endregion
 
-        public SevenZipStreamsCompressor(Stream stream)
+        #region Internal Constructor
+        internal SevenZipStreamsCompressor(Stream stream)
         {
             this.stream = stream;
             this.Method = null;
         }
+        #endregion Internal Constructor
 
-        public PackedStream Compress(Stream inputStream, SevenZipProgressProvider progressProvider)
+        #region Internal Methods
+        internal PackedStream Compress(Stream inputStream, SevenZipProgressProvider progressProvider)
         {
             // Compression method
             if (!Method.HasValue || !SevenZipMethods.Lookup.ContainsKey(Method.Value))
@@ -128,9 +135,10 @@ namespace pdj.tiny7z.Archive
 
             return ps;
         }
+        #endregion Internal Methods
 
         #region Private Field
-        Stream stream;
+        private Stream stream;
         #endregion Private Field
     }
 }

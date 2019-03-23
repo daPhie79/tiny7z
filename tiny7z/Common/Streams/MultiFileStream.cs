@@ -32,6 +32,7 @@ namespace pdj.tiny7z.Common
                 Clear();
                 return s;
             }
+
             public long Size()
             {
                 if (this.stream != null)
@@ -40,18 +41,21 @@ namespace pdj.tiny7z.Common
                     return new FileInfo(this.filePath).Length;
                 return -1;
             }
+
             public Source Set(Stream stream)
             {
                 this.stream = stream;
                 this.filePath = null;
                 return this;
             }
+
             public Source Set(string filePath)
             {
                 this.stream = null;
                 this.filePath = filePath;
                 return this;
             }
+
             public Source Clear()
             {
                 this.stream = null;
@@ -59,24 +63,26 @@ namespace pdj.tiny7z.Common
                 return this;
             }
 
-            Stream stream;
-            string filePath;
-
             public Source()
             {
                 this.stream = null;
                 this.filePath = null;
             }
+
             public Source(string FilePath)
             {
                 this.stream = null;
                 this.filePath = FilePath;
             }
+
             public Source(Stream Stream)
             {
                 this.stream = Stream;
                 this.filePath = null;
             }
+
+            Stream stream;
+            string filePath;
         }
 
         /// <summary>
@@ -96,11 +102,6 @@ namespace pdj.tiny7z.Common
         }
 
         /// <summary>
-        /// Private member: remember either read or write access.
-        /// </summary>
-        private FileAccess fileAccess;
-
-        /// <summary>
         /// Straightforward stream initialization.
         /// </summary>
         public MultiFileStream(FileAccess fileAccess, params Source[] sources)
@@ -118,5 +119,10 @@ namespace pdj.tiny7z.Common
                 this.Sizes[i] = Sources[i].Size();
             }
         }
+
+        /// <summary>
+        /// Remember either read or write access.
+        /// </summary>
+        private FileAccess fileAccess;
     }
 }

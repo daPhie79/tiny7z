@@ -1,9 +1,17 @@
-﻿using System;
+﻿using pdj.tiny7z.Common;
+using System;
 using System.Collections.Generic;
 using System.IO;
 
 namespace pdj.tiny7z.Archive
 {
+    /// <summary>
+    /// This delegate can be used to provide feedback in the middle of a running de/compression action
+    /// </summary>
+    /// <param name="files">List of files that are requiring feedback to continue</param>
+    /// <returns>TRUE or FALSE depending on received feedback</returns>
+    public delegate bool FeedbackNeededDelegate (IEnumerable<ArchiveFile> files);
+
     /// <summary>
     /// User progress delegate called by IProgressProvider implementation
     /// </summary>
@@ -259,7 +267,7 @@ namespace pdj.tiny7z.Archive
     /// <summary>
     /// Header parser interface
     /// </summary>
-    public interface IHeaderParser
+    internal interface IHeaderParser
     {
         void Parse(Stream headerStream);
     }
@@ -267,7 +275,7 @@ namespace pdj.tiny7z.Archive
     /// <summary>
     /// Header writer interface
     /// </summary>
-    public interface IHeaderWriter
+    internal interface IHeaderWriter
     {
         void Write(Stream headerStream);
     }

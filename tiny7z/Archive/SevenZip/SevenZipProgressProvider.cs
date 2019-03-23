@@ -1,4 +1,5 @@
-﻿using ManagedLzma.LZMA.Master;
+﻿using pdj.tiny7z.Common;
+using ManagedLzma.LZMA.Master;
 using System;
 using System.Linq;
 using System.Collections.ObjectModel;
@@ -6,7 +7,7 @@ using System.Collections.Generic;
 
 namespace pdj.tiny7z.Archive
 {
-    class SevenZipProgressProvider : IProgressProvider, LZMA.ICompressProgress
+    internal class SevenZipProgressProvider : IProgressProvider, LZMA.ICompressProgress
     {
         #region Public Properties (IProgressProvider)
         public IReadOnlyList<ArchiveFile> Files
@@ -79,8 +80,8 @@ namespace pdj.tiny7z.Archive
         }
         #endregion Public Methods (LZMA.ICompressProgress)
 
-        #region Public Constructor
-        public SevenZipProgressProvider(IList<SevenZipArchiveFile> files, IList<UInt64> indices, ProgressDelegate progressFunc = null)
+        #region Internal Constructor
+        internal SevenZipProgressProvider(IList<SevenZipArchiveFile> files, IList<UInt64> indices, ProgressDelegate progressFunc = null)
         {
             this.files = files;
             if (indices.Any())
@@ -100,16 +101,16 @@ namespace pdj.tiny7z.Archive
             RawTotalSize = (ulong)this.files.Sum(f => (decimal)(f.Size ?? 0));
             TotalSize = !indices.Any() ? RawTotalSize : (ulong)indices.Select(i => this.files[(int)i]).Sum(f => (decimal)(f.Size ?? 0));
         }
-        #endregion
+        #endregion Internal Constructor
 
         #region Private Fields
-        IList<SevenZipArchiveFile> files;
-        bool[] matches;
-        int lastFileIndex = 0;
-        ulong lastFileOffset = 0;
-        ulong rawOffset = 0;
-        ulong lastRawOffset = 0;
-        ulong compressedOffset = 0;
+        private IList<SevenZipArchiveFile> files;
+        private bool[] matches;
+        private int lastFileIndex = 0;
+        private ulong lastFileOffset = 0;
+        private ulong rawOffset = 0;
+        private ulong lastRawOffset = 0;
+        private ulong compressedOffset = 0;
         #endregion Private Fields
     }
 }

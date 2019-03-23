@@ -4,23 +4,16 @@ using System.IO;
 
 namespace pdj.tiny7z.Common
 {
+    /// <summary>
+    /// Stream that restricts access from another stream to specific boundaries.
+    /// </summary>
     public class SubStream : Stream
     {
-        private Stream internalStream;
-        private long startOffset;
-        private long windowSize;
-        private long currentOffset;
-
         public override bool CanRead => internalStream is Stream && internalStream.CanRead;
-
         public override bool CanSeek => internalStream is Stream && internalStream.CanSeek;
-
         public override bool CanWrite => internalStream is Stream && internalStream.CanWrite;
-
         public override bool CanTimeout => internalStream is Stream && internalStream.CanTimeout;
-
         public override long Length => windowSize;
-
         public override long Position
         {
             get => currentOffset - startOffset;
@@ -32,9 +25,13 @@ namespace pdj.tiny7z.Common
             }
         }
 
-        public SubStream() : base() { }
+        public SubStream()
+            : base()
+        {
+        }
 
-        public SubStream(Stream stream) : base()
+        public SubStream(Stream stream)
+            : base()
         {
             this.internalStream = stream;
             this.startOffset = 0;
@@ -55,6 +52,11 @@ namespace pdj.tiny7z.Common
             this.windowSize = windowSize;
             this.currentOffset = startOffset;
         }
+
+        private Stream internalStream;
+        private long startOffset;
+        private long windowSize;
+        private long currentOffset;
 
         public override void Write(byte[] array, int offset, int count)
         {
@@ -162,6 +164,5 @@ namespace pdj.tiny7z.Common
         public override int ReadTimeout { get => 0; }
 
         public override int WriteTimeout { get => 0; }
-
     }
 }

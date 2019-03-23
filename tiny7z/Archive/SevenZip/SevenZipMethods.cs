@@ -1,4 +1,5 @@
-﻿using System;
+﻿using pdj.tiny7z.Common;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -52,10 +53,10 @@ namespace pdj.tiny7z.Archive
 
             public override int GetHashCode()
             {
-                return ComputeHash(Raw);
+                return computeHash(Raw);
             }
 
-            private static int ComputeHash(params byte[] data)
+            private static int computeHash(params byte[] data)
             {
                 unchecked
                 {

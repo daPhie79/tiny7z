@@ -8,13 +8,13 @@ using System.Text;
 
 namespace pdj.tiny7z.Archive
 {
-    public partial class SevenZipHeader : IHeaderParser, IHeaderWriter
+    internal partial class SevenZipHeader : IHeaderParser, IHeaderWriter
     {
-        #region Public Enums
+        #region Internal Enums
         /// <summary>
         /// All valid property IDs
         /// </summary>
-        public enum PropertyID
+        internal enum PropertyID
         {
             kEnd = 0x00,
 
@@ -54,10 +54,10 @@ namespace pdj.tiny7z.Archive
             kStartPos = 0x18,
             kDummy = 0x19,
         };
-        #endregion Public Enums
+        #endregion Internal Enums
 
-        #region Public Classes
-        public class Digests : IHeaderParser, IHeaderWriter
+        #region Internal Classes
+        internal class Digests : IHeaderParser, IHeaderWriter
         {
             public UInt64 NumStreams()
             {
@@ -100,7 +100,7 @@ namespace pdj.tiny7z.Archive
             }
         }
 
-        public class ArchiveProperty : IHeaderParser, IHeaderWriter
+        internal class ArchiveProperty : IHeaderParser, IHeaderWriter
         {
             public PropertyID Type;
             public UInt64 Size;
@@ -128,7 +128,7 @@ namespace pdj.tiny7z.Archive
             }
         }
 
-        public class ArchiveProperties : IHeaderParser, IHeaderWriter
+        internal class ArchiveProperties : IHeaderParser, IHeaderWriter
         {
             public List<ArchiveProperty> Properties; // [Arbitrary number]
             public ArchiveProperties()
@@ -158,7 +158,7 @@ namespace pdj.tiny7z.Archive
             }
         }
 
-        public class PackInfo : IHeaderParser, IHeaderWriter
+        internal class PackInfo : IHeaderParser, IHeaderWriter
         {
             public UInt64 PackPos;
             public UInt64 NumPackStreams;
@@ -217,7 +217,7 @@ namespace pdj.tiny7z.Archive
             }
         }
 
-        public class CoderInfo : IHeaderParser, IHeaderWriter
+        internal class CoderInfo : IHeaderParser, IHeaderWriter
         {
             public const Byte AttrSizeMask      = 0b00001111;
             public const Byte AttrComplexCoder  = 0b00010000;
@@ -285,7 +285,7 @@ namespace pdj.tiny7z.Archive
             }
         }
 
-        public class BindPairsInfo : IHeaderParser, IHeaderWriter
+        internal class BindPairsInfo : IHeaderParser, IHeaderWriter
         {
             public UInt64 InIndex;
             public UInt64 OutIndex;
@@ -308,7 +308,7 @@ namespace pdj.tiny7z.Archive
             }
         }
 
-        public class Folder : IHeaderParser, IHeaderWriter
+        internal class Folder : IHeaderParser, IHeaderWriter
         {
             public UInt64 NumCoders;
             public CoderInfo[] CodersInfo;
@@ -433,7 +433,7 @@ namespace pdj.tiny7z.Archive
             }
         }
 
-        public class UnPackInfo : IHeaderParser, IHeaderWriter
+        internal class UnPackInfo : IHeaderParser, IHeaderWriter
         {
             public UInt64 NumFolders;
             public Byte External;
@@ -537,7 +537,7 @@ namespace pdj.tiny7z.Archive
             }
         }
 
-        public class SubStreamsInfo : IHeaderParser, IHeaderWriter
+        internal class SubStreamsInfo : IHeaderParser, IHeaderWriter
         {
             UnPackInfo unPackInfo; // dependency
 
@@ -675,7 +675,7 @@ namespace pdj.tiny7z.Archive
             }
         }
 
-        public class StreamsInfo : IHeaderParser, IHeaderWriter
+        internal class StreamsInfo : IHeaderParser, IHeaderWriter
         {
             public PackInfo PackInfo;
             public UnPackInfo UnPackInfo;
@@ -740,7 +740,7 @@ namespace pdj.tiny7z.Archive
             }
         }
 
-        public abstract class FileProperty : IHeaderParser, IHeaderWriter
+        internal abstract class FileProperty : IHeaderParser, IHeaderWriter
         {
             public PropertyID PropertyID;
             public UInt64 NumFiles;
@@ -775,7 +775,7 @@ namespace pdj.tiny7z.Archive
             public abstract void WriteProperty(Stream hs);
         }
 
-        public class PropertyEmptyStream : FileProperty
+        internal class PropertyEmptyStream : FileProperty
         {
             public bool[] IsEmptyStream;
             public UInt64 NumEmptyStreams;
@@ -792,7 +792,7 @@ namespace pdj.tiny7z.Archive
             }
         }
 
-        public class PropertyEmptyFile : FileProperty
+        internal class PropertyEmptyFile : FileProperty
         {
             public UInt64 NumEmptyStreams;
             public bool[] IsEmptyFile;
@@ -813,7 +813,7 @@ namespace pdj.tiny7z.Archive
             }
         }
 
-        public class PropertyAnti : FileProperty
+        internal class PropertyAnti : FileProperty
         {
             public UInt64 NumEmptyStreams;
             public bool[] IsAnti;
@@ -834,7 +834,7 @@ namespace pdj.tiny7z.Archive
             }
         }
 
-        public class PropertyTime : FileProperty
+        internal class PropertyTime : FileProperty
         {
             public Byte External;
             public UInt64 DataIndex;
@@ -892,7 +892,7 @@ namespace pdj.tiny7z.Archive
             }
         }
 
-        public class PropertyName : FileProperty
+        internal class PropertyName : FileProperty
         {
             public Byte External;
             public UInt64 DataIndex;
@@ -945,7 +945,7 @@ namespace pdj.tiny7z.Archive
             }
         }
 
-        public class PropertyAttributes : FileProperty
+        internal class PropertyAttributes : FileProperty
         {
             public Byte External;
             public UInt64 DataIndex;
@@ -986,7 +986,7 @@ namespace pdj.tiny7z.Archive
             }
         }
 
-        public class PropertyDummy : FileProperty
+        internal class PropertyDummy : FileProperty
         {
             public PropertyDummy()
                 : base(PropertyID.kDummy, 0) { }
@@ -1000,7 +1000,7 @@ namespace pdj.tiny7z.Archive
             }
         }
 
-        public class FilesInfo : IHeaderParser, IHeaderWriter
+        internal class FilesInfo : IHeaderParser, IHeaderWriter
         {
             public UInt64 NumFiles;
             public UInt64 NumEmptyStreams;
@@ -1073,7 +1073,7 @@ namespace pdj.tiny7z.Archive
             }
         }
 
-        public class Header : IHeaderParser, IHeaderWriter
+        internal class Header : IHeaderParser, IHeaderWriter
         {
             public ArchiveProperties ArchiveProperties;
             public StreamsInfo AdditionalStreamsInfo;
@@ -1143,44 +1143,36 @@ namespace pdj.tiny7z.Archive
                 hs.WriteByte((Byte)PropertyID.kEnd);
             }
         }
-        #endregion Public Classes
+        #endregion Internal Classes
 
-        #region Public Properties
-        public Header RawHeader
+        #region Internal Properties
+        internal Header RawHeader
         {
             get; set;
         }
-        public StreamsInfo EncodedHeader
+        internal StreamsInfo EncodedHeader
         {
             get; set;
         }
-        #endregion Public Properties
+        #endregion Internal Properties
 
         #region Private Fields
-        private Stream headerStream;
+        Stream headerStream;
         #endregion Private Fields
 
-        #region Public Constructors
+        #region Internal Constructors
         /// <summary>
         /// 7zip file header constructor
         /// </summary>
-        public SevenZipHeader(Stream headerStream, bool createNew = false)
+        internal SevenZipHeader(Stream headerStream, bool createNew = false)
         {
             this.headerStream = headerStream;
             RawHeader = createNew ? new Header() : null;
             EncodedHeader = null;
         }
-        #endregion Public Constructors
+        #endregion Internal Constructors
 
-        #region Public Methods
-        /// <summary>
-        /// Main parser that initiates cascaded parsing
-        /// </summary>
-        public void Parse()
-        {
-            Parse(headerStream);
-        }
-
+        #region Public Methods (Interfaces)
         /// <summary>
         /// Main parser entry point.
         /// </summary>
@@ -1239,11 +1231,21 @@ namespace pdj.tiny7z.Archive
                 Trace.TraceWarning(ex.GetType().Name + ": " + ex.Message + Environment.NewLine + ex.StackTrace);
             }
         }
+        #endregion Public Methods (Interfaces)
+
+        #region Internal Methods
+        /// <summary>
+        /// Main parser that initiates cascaded parsing
+        /// </summary>
+        internal void Parse()
+        {
+            Parse(headerStream);
+        }
 
         /// <summary>
         /// Helper function to return a property id while making sure it's valid (+ trace)
         /// </summary>
-        public static PropertyID GetPropertyID(IHeaderParser parser, Stream headerStream)
+        internal static PropertyID GetPropertyID(IHeaderParser parser, Stream headerStream)
         {
             Byte propertyID = headerStream.ReadByteThrow();
             if (propertyID > (Byte)PropertyID.kDummy)
@@ -1256,11 +1258,11 @@ namespace pdj.tiny7z.Archive
         /// <summary>
         /// Helper function to read and ensure a specific PropertyID is next in header stream
         /// </summary>
-        public static void ExpectPropertyID(IHeaderParser parser, Stream headerStream, PropertyID propertyID)
+        internal static void ExpectPropertyID(IHeaderParser parser, Stream headerStream, PropertyID propertyID)
         {
             if (GetPropertyID(parser, headerStream) != propertyID)
                 throw new SevenZipException(parser.GetType().Name + $": Expected property ID = {propertyID}.");
         }
-        #endregion Public Methods
+        #endregion Internal Methods
     }
 }

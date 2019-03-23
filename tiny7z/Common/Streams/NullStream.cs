@@ -1,31 +1,17 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace pdj.tiny7z.Common
 {
-    class NullStream : Stream
+    /// <summary>
+    /// Null stream implementation. Allows reading and writing into it as if it was an actual stream, but nothing is done with data.
+    /// </summary>
+    public class NullStream : Stream
     {
-        long length;
-        long pos;
-
-        public NullStream(long length)
-        {
-            this.length = length;
-            this.pos = 0;
-        }
-
         public override bool CanRead => true;
-
         public override bool CanSeek => true;
-
         public override bool CanWrite => true;
-
         public override long Length => (long)length;
-
         public override long Position
         {
             get => pos;
@@ -35,6 +21,15 @@ namespace pdj.tiny7z.Common
                     pos = value;
             }
         }
+
+        public NullStream(long length)
+        {
+            this.length = length;
+            this.pos = 0;
+        }
+
+        private long length;
+        private long pos;
 
         public override void Flush()
         {

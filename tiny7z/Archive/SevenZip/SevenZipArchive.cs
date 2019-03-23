@@ -16,13 +16,13 @@ namespace pdj.tiny7z.Archive
         /// <summary>
         /// 7zip file signature
         /// </summary>
-        public static readonly Byte[] kSignature = new Byte[6] { (Byte)'7', (Byte)'z', 0xBC, 0xAF, 0x27, 0x1C };
+        internal static readonly Byte[] kSignature = new Byte[6] { (Byte)'7', (Byte)'z', 0xBC, 0xAF, 0x27, 0x1C };
 
         /// <summary>
         /// 7zip file archive version
         /// </summary>
         [StructLayout(LayoutKind.Sequential, Pack = 1)]
-        public struct ArchiveVersion
+        internal struct ArchiveVersion
         {
             [MarshalAs(UnmanagedType.U1)]
             public Byte Major;   // now = 0
@@ -34,7 +34,7 @@ namespace pdj.tiny7z.Archive
         /// Header part that tells where the actual header starts at the end of the file usually
         /// </summary>
         [StructLayout(LayoutKind.Sequential, Pack = 1)]
-        public struct StartHeader
+        internal struct StartHeader
         {
             [MarshalAs(UnmanagedType.U8)]
             public UInt64 NextHeaderOffset;
@@ -50,7 +50,7 @@ namespace pdj.tiny7z.Archive
         /// Signature header of a valid 7zip file
         /// </summary>
         [StructLayout(LayoutKind.Sequential, Pack = 1)]
-        public struct SignatureHeader
+        internal struct SignatureHeader
         {
             [MarshalAs(UnmanagedType.ByValArray, SizeConst = 6)]
             public Byte[] Signature;
@@ -153,7 +153,7 @@ namespace pdj.tiny7z.Archive
         /// <summary>
         /// Defaut empty constructor
         /// </summary>
-        SevenZipArchive()
+        private SevenZipArchive()
         {
             stream = null;
             fileAccess = null;
@@ -166,7 +166,7 @@ namespace pdj.tiny7z.Archive
         /// <summary>
         /// Open an existing 7zip file for reading
         /// </summary>
-        void open()
+        private void open()
         {
             SignatureHeader sig = stream.ReadStruct<SignatureHeader>();
             if (!sig.Signature.SequenceEqual(kSignature))
@@ -248,7 +248,7 @@ namespace pdj.tiny7z.Archive
         /// <summary>
         /// Create a new 7zip file for writing
         /// </summary>
-        void create()
+        private void create()
         {
             this.signatureHeader = new SignatureHeader()
             {

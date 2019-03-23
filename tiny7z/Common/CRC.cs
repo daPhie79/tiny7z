@@ -2,6 +2,9 @@
 
 namespace pdj.tiny7z.Common
 {
+    /// <summary>
+    /// CRC calculations helper class
+    /// </summary>
     public class CRC
     {
         public static uint[] Table
@@ -9,41 +12,17 @@ namespace pdj.tiny7z.Common
             get; private set;
         }
 
-        static CRC()
-        {
-            Table = new uint[256];
-
-            uint poly = 0xEDB88320;
-            uint temp = 0;
-            for (uint i = 0; i < Table.Length; ++i)
-            {
-                temp = i;
-                for (int j = 8; j > 0; --j)
-                {
-                    if ((temp & 1) == 1)
-                    {
-                        temp = (uint)((temp >> 1) ^ poly);
-                    }
-                    else
-                    {
-                        temp >>= 1;
-                    }
-                }
-                Table[i] = temp;
-            }
-        }
-
         public uint Result
         {
             get => ~crc;
         }
 
-        private uint crc;
-
         public CRC(uint crc = 0xffffffff)
         {
             this.crc = crc;
         }
+
+        private uint crc;
 
         public CRC Calculate(byte data)
         {
@@ -83,6 +62,30 @@ namespace pdj.tiny7z.Common
                 }
             }
             return this;
+        }
+
+        static CRC()
+        {
+            Table = new uint[256];
+
+            uint poly = 0xEDB88320;
+            uint temp = 0;
+            for (uint i = 0; i < Table.Length; ++i)
+            {
+                temp = i;
+                for (int j = 8; j > 0; --j)
+                {
+                    if ((temp & 1) == 1)
+                    {
+                        temp = (uint)((temp >> 1) ^ poly);
+                    }
+                    else
+                    {
+                        temp >>= 1;
+                    }
+                }
+                Table[i] = temp;
+            }
         }
     }
 }

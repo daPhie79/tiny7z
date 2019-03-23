@@ -9,7 +9,7 @@ namespace pdj.tiny7z.Common
     /// </summary>
     public abstract class AbstractMultiStream : Stream
     {
-        #region Virtual methods
+        #region Virtual Methods
         /// <summary>
         /// This is called when current stream is exhausted, to prepare next stream.
         /// </summary>
@@ -22,9 +22,9 @@ namespace pdj.tiny7z.Common
         {
             internalStream.Close();
         }
-        #endregion
+        #endregion Virtual Methods
 
-        #region Properties
+        #region Public Properties
         /// <summary>
         /// For reading streams, this will hold stream sizes once they have been exhausted. For writing streams, these have to be filled in advance.
         /// </summary>
@@ -40,18 +40,18 @@ namespace pdj.tiny7z.Common
         {
             get; protected set;
         }
-        #endregion
+        #endregion Public Properties
 
-        #region Private members
+        #region Private Fields
         protected CRCStream internalStream;
         protected long numStreams;
         protected long currentIndex;
         private long currentOffset;
         private long currentPos;
         private long currentSize;
-        #endregion
+        #endregion Private Fields
 
-        #region Stream implementation
+        #region Public Stream Interface
         public AbstractMultiStream(UInt64 numStreams)
             : base()
         {
@@ -239,9 +239,9 @@ namespace pdj.tiny7z.Common
         {
             throw new NotImplementedException();
         }
-        #endregion
+        #endregion Public Stream Interface
 
-        #region Private methods
+        #region Private Methods
         /// <summary>
         /// Internal method to make sure stream is ready after first being initialized.
         /// </summary>
@@ -284,6 +284,6 @@ namespace pdj.tiny7z.Common
 
             return internalStream != null;
         }
-        #endregion
+        #endregion Private Methods
     }
 }
