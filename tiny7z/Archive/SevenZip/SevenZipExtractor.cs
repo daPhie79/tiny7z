@@ -55,6 +55,11 @@ namespace pdj.tiny7z.Archive
         #endregion Public Properties
 
         #region Public Methods
+        public void Dispose() // IDisposable
+        {
+            Finalize();
+        }
+
         public void Dump()
         {
             // TODO
@@ -288,7 +293,6 @@ namespace pdj.tiny7z.Archive
         {
             this.stream = null;
             this.header = null;
-            this._Files = null;
             return this;
         }
         #endregion Public Methods
@@ -369,7 +373,7 @@ namespace pdj.tiny7z.Archive
                     else
                     {
                         if (!SkipExistingFiles)
-                            throw new IOException($"File `{file.Name}` already exists.");
+                            throw new SevenZipFileAlreadyExistsException(file);
                         result = FeedbackResult.No;
                     }
                 }

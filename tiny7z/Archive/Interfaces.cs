@@ -91,7 +91,7 @@ namespace pdj.tiny7z.Archive
     /// <summary>
     /// Extractor proxy interface
     /// </summary>
-    public interface IExtractor
+    public interface IExtractor : IDisposable
     {
         /// <summary>
         /// List of files contained in the opened archive.
@@ -208,7 +208,7 @@ namespace pdj.tiny7z.Archive
     /// <summary>
     /// Compressor proxy interface
     /// </summary>
-    public interface ICompressor
+    public interface ICompressor : IDisposable
     {
         /// <summary>
         /// List of files in the archive.

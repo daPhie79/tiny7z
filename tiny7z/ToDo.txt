@@ -1,0 +1,26 @@
+﻿# Tiny7z
+
+## TO DO LIST
+
+- [ ] Allow per-file (or files group) compression settings (solid/non solid)
+- [ ] Allow compressing in different coders (LZMA2, etc.)
+
+## DONE
+
+- [x] Replace digests with arrays of CRCs (improved Digests instead)
+- [x] When SubStreamsInfo exists, fields have to be properly filled/guessed from other fields
+- [x] When writing SubStreamsInfo, I have to undo these guesses to write them
+- [x] Add constants for hard-coded values
+- [x] Compressed header
+- [x] Replace clunky bool vectors with adapted vectors with data used
+- [x] Compress one file
+- [x] Ensure MultiFileStream.Source cleanup
+- [x] Better extract/compress interface
+- [x] Add BCJ and BCJ2 filters
+- [x] Add multiple coders per folder support for decompression
+- [x] Add progress report for compression and decompression
+- [x] Add AES password handling to enable decryption
+- [x] Fully implement ProgressDelegate calls with file details
+- [x] Implement access protection with internal where appropriate
+- [x] Ensure no duplicate files when not "preserving directory structure" (handle overwriting per file at least)
+- [x] Better tracing

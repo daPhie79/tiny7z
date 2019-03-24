@@ -41,6 +41,16 @@ namespace pdj.tiny7z.Archive
         #endregion Public Properties
 
         #region Public Methods
+        public void Dispose() // IDisposable
+        {
+            if (this.stream != null && this.header != null)
+            {
+                Finalize();
+            }
+            this.stream = null;
+            this.header = null;
+        }
+
         public ICompressor AddDirectory(string inputDirectory, string archiveDirectory = null, bool recursive = true)
         {
             Trace.TraceInformation($"Adding files from directory `{inputDirectory}`.");
@@ -146,6 +156,9 @@ namespace pdj.tiny7z.Archive
 
         public ICompressor Finalize()
         {
+            if (this.stream == null || this.header == null)
+                throw new SevenZipException("Compressor object has already been finalized.");
+
             Trace.TraceInformation($"Compressing files.");
             Trace.Indent();
             try
@@ -189,6 +202,8 @@ namespace pdj.tiny7z.Archive
                 Trace.TraceInformation("Done compressing files.");
             }
 
+            this.stream = null;
+            this.header = null;
             return this;
         }
         #endregion Public Methods

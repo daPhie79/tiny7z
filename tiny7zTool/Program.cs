@@ -33,7 +33,9 @@ namespace pdj.tiny7z
         }
 
         static ArchiveAction archiveAction = ArchiveAction.None;
+        static bool finished = false;
         static bool overwrite = false;
+        static string password = null;
         static string archiveFileName = string.Empty;
         static string outputPath = string.Empty;
         static List<string> fileNames = new List<string>();
@@ -80,12 +82,15 @@ namespace pdj.tiny7z
         {
             if (currentFileIndex >= provider.Files.Count)
             {
-                string status = (archiveAction == ArchiveAction.Add ? "Compressing" : "Extracting") + ": 100% Done!";
-                status = status + new string(' ', Console.BufferWidth - 1 - status.Length);
-                Console.Write(status);
-                Console.SetCursorPosition(0, Console.CursorTop);
+                if (!finished)
+                {
+                    string status = (archiveAction == ArchiveAction.Add ? "Compressing" : "Extracting") + ": 100% Done!";
+                    status = status + new string(' ', Console.BufferWidth - 1 - status.Length);
+                    Console.WriteLine(status);
+                    finished = true;
+                }
             }
-            else if (timer == default(DateTime) || DateTime.Now.Subtract(timer).Milliseconds > 250)
+            else if (timer == default(DateTime) || DateTime.Now.Subtract(timer).Milliseconds > 100)
             {
                 timer = DateTime.Now;
                 string status;
@@ -121,75 +126,104 @@ namespace pdj.tiny7z
             }
 
             using (var archive = new Archive.SevenZipArchive(File.Create(archiveFileName), FileAccess.Write))
+            using (var compressor = archive.Compressor())
             {
-                var compressor = archive.Compressor();
                 compressor.CompressHeader = true;
                 compressor.PreserveDirectoryStructure = true;
+                compressor.ProgressDelegate = ProgressEvent;
                 compressor.Solid = true;
 
                 foreach (var fn in fileNames)
                 {
-                    if (fn.IndexOfAny(new[] { '?', '*' }) != -1)
+                    try
                     {
-                        string path = Path.Combine(Directory.GetCurrentDirectory(), Path.GetDirectoryName(fn));
-                        string pattern = Path.GetFileName(fn);
-
-                        foreach (var file in Directory.EnumerateFiles(path, pattern, SearchOption.TopDirectoryOnly))
+                        if (fn.IndexOfAny(new[] { '?', '*' }) != -1)
                         {
-                            Log.Information("Compressing {File}...", Path.GetFileName(file));
-                            compressor.AddFile(file);
+                            string path = Path.Combine(Directory.GetCurrentDirectory(), Path.GetDirectoryName(fn));
+                            string pattern = Path.GetFileName(fn);
+
+                            foreach (var file in Directory.EnumerateFiles(path, pattern, SearchOption.TopDirectoryOnly))
+                            {
+                                Log.Information("Compressing {File}...", Path.GetFileName(file));
+                                compressor.AddFile(file);
+                            }
+                        }
+                        else
+                        {
+                            if (File.Exists(fn))
+                            {
+                                Log.Information("Compressing {File}...", Path.GetFileName(fn));
+                                compressor.AddFile(fn);
+                            }
+                            else if (Directory.Exists(fn))
+                            {
+                                var info = new DirectoryInfo(fn);
+                                Log.Information("Compressing contents of {Directory}...", Path.GetFileName(info.Name));
+                                compressor.AddDirectory(info.FullName);
+                            }
                         }
                     }
-                    else
+                    catch (Exception ex)
                     {
-                        if (File.Exists(fn))
-                        {
-                            Log.Information("Compressing {File}...", Path.GetFileName(fn));
-                            compressor.AddFile(fn);
-                        }
-                        else if (Directory.Exists(fn))
-                        {
-                            var info = new DirectoryInfo(fn);
-                            Log.Information("Compressing contents of {Directory}...", Path.GetFileName(info.Name));
-                            compressor.AddDirectory(info.FullName);
-                        }
+                        Log.Error(ex, "There was an error while building file list.");
                     }
                 }
 
-                var timer = DateTime.Now;
-                compressor.ProgressDelegate = ProgressEvent;
-
                 var now = DateTime.Now;
-                compressor.Finalize();
-                var ela = DateTime.Now.Subtract(now);
+                try
+                {
+                    compressor.Finalize();
+                    Console.WriteLine();
+                }
+                catch (Archive.SevenZipFileAlreadyExistsException ex)
+                {
+                    Log.Error(ex, "Output archive filename already exists.");
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "There was an error while compressing files.");
+                }
 
-                Console.WriteLine();
-                Log.Information("Compression took {ela}ms.", ela.TotalMilliseconds);
+                Log.Information("Compression took {ela}ms.", DateTime.Now.Subtract(now).TotalMilliseconds);
             }
         }
 
         static void ExtractFiles(bool preserveDirectoryStructure)
         {
             using (var archive = new Archive.SevenZipArchive(File.OpenRead(archiveFileName), FileAccess.Read))
+            using (var extractor = archive.Extractor())
             {
-                var extractor = archive.Extractor();
-                extractor.OverwriteExistingFiles = false;
+                extractor.OverwriteExistingFiles = overwrite;
+                extractor.Password = password;
                 extractor.PreserveDirectoryStructure = preserveDirectoryStructure;
-                extractor.SkipExistingFiles = true;
+                extractor.ProgressDelegate = ProgressEvent;
+                extractor.SkipExistingFiles = false;
 
                 if (string.IsNullOrWhiteSpace(outputPath))
                 {
                     outputPath = Directory.GetCurrentDirectory();
                 }
 
-                var timer = DateTime.Now;
-                extractor.ProgressDelegate = ProgressEvent;
-
                 var now = DateTime.Now;
                 if (!fileNames.Any())
                 {
-                    Log.Information("Extracting files into \"{Path}\"...", Path.GetFileName(outputPath));
-                    extractor.ExtractArchive(outputPath);
+                    try
+                    {
+                        Log.Information("Extracting files into \"{Path}\"...", Path.GetFileName(outputPath));
+                        extractor.ExtractArchive(outputPath);
+                    }
+                    catch (Archive.SevenZipPasswordRequiredException ex)
+                    {
+                        Log.Error(ex.Message);
+                    }
+                    catch (Archive.SevenZipFileAlreadyExistsException ex)
+                    {
+                        Log.Error(ex.Message);
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error(ex, "There was an error attempting to extract file.");
+                    }
                 }
                 else
                 {
@@ -197,16 +231,15 @@ namespace pdj.tiny7z
                     {
                         Log.Information("Extracting file(s) \"{FileNames}\" into \"{Path}\"...", string.Join(", ", fileNames), Path.GetFileName(outputPath));
                         extractor.ExtractFiles(fileNames.ToArray(), outputPath);
+                        Console.WriteLine();
                     }
                     catch (Exception ex)
                     {
                         Log.Error(ex, "There was an error attempting to extract file.");
                     }
                 }
-                var ela = DateTime.Now.Subtract(now);
 
-                Console.WriteLine();
-                Log.Information("Decompression took {ela}ms.", ela.TotalMilliseconds);
+                Log.Information("Decompression took {ela}ms.", DateTime.Now.Subtract(now).TotalMilliseconds);
             }
         }
 
@@ -218,7 +251,9 @@ namespace pdj.tiny7z
             Log.Information("    e extract files from archive (ignoring paths)");
             Log.Information("    x extract files from archive (full paths)");
             Log.Information("  [options] :");
-            Log.Information("    -o \"output path\" : specify output directory for extracted files.");
+            Log.Information("    -o \"output path\" : specify output directory for extracted files");
+            Log.Information("    -p \"password\" : specify password to decrypt password-protected archive");
+            Log.Information("    -x : overwrite output files (either archive file, or extracted files)");
             Log.Information("  <archive file> : name of .7z archive file to compress to, or decompress from");
             Log.Information("  <filenames> : space separated list of files to add to or extract from archive");
             Console.WriteLine();
@@ -255,8 +290,20 @@ namespace pdj.tiny7z
                                 }
                             }
                             break;
+                        case "-p":
+                            if (++i == args.Length)
+                            {
+                                Log.Error("Invalid -p parameter. Missing password.");
+                                error = true;
+                            }
+                            else
+                            {
+                                password = args[i];
+                                Log.Information("Using \"{Password}\" to decrypt archive.", password);
+                            }
+                            break;
                         case "-x":
-                            Log.Information("-x Overwrite output archive if it already exists.");
+                            Log.Information("-x Overwrite output archive or extracted files if it already exists.");
                             overwrite = true;
                             break;
                         default:

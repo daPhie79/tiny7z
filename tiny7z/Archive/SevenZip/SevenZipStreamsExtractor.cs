@@ -22,7 +22,7 @@ namespace pdj.tiny7z.Archive
         public string CryptoGetTextPassword()
         {
             if (password == null)
-                throw new SevenZipException("No password provided for encrypted data.");
+                throw new SevenZipPasswordRequiredException();
             return password;
         }
         #endregion Public Methods (Interfaces)

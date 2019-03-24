@@ -14,6 +14,11 @@ tiny7z is a native C# SevenZip 7zip .7z file format archive reader/writer
 - Support LZMA, LZMA2, PPMd decoders.
 - Support AES, BCJ and BCJ2 decoder filters.
 
+## Releases
+
+- v0.1 - First release, unofficial, lots of features missing, incomplete test app
+- v0.2 - First official release, command-line test app
+
 ## Current limitations
 
 *They are plenty unfortunately, but this library is still a huge step forward for compact .7z support in native C#*
